@@ -1,0 +1,66 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+title Diagramme de Cas d Utilisation - CoWork Space\n(MVP - Cahier des charges)
+
+actor "Membre" as Membre
+actor "Administrateur" as Admin
+actor "Systeme Email" as Email
+
+rectangle "Application CoWork Space" {
+  usecase "S inscrire" as UC01
+  usecase "Valider email" as UC02
+  usecase "Se connecter" as UC03
+  usecase "Se deconnecter" as UC04
+  usecase "Reinitialiser mot de passe" as UC05
+  usecase "Modifier profil" as UC06
+  usecase "Visualiser espaces" as UC07
+  usecase "Filtrer espaces" as UC08
+  usecase "Recherche globale" as UC09
+  usecase "Consulter calendrier" as UC10
+  usecase "Reserver espace" as UC11
+  usecase "Creer reservation recurrente" as UC12
+  usecase "Modifier reservation" as UC13
+  usecase "Annuler reservation" as UC14
+  usecase "Consulter historique" as UC15
+  usecase "Marquer reservation privee" as UC16
+  usecase "Exporter PDF" as UC17
+  usecase "Valider inscription" as UC18
+  usecase "Gerer espaces" as UC19
+  usecase "Gerer equipements" as UC20
+  usecase "Gerer membres" as UC21
+  usecase "Consulter dashboard" as UC22
+}
+
+UC01 --> Email : confirmation
+UC11 --> Email : confirmation
+UC13 --> Email : notification
+UC14 --> Email : notification
+
+Membre --> UC01
+Membre --> UC02
+Membre --> UC03
+Membre --> UC04
+Membre --> UC05
+Membre --> UC06
+Membre --> UC07
+Membre --> UC08
+Membre --> UC09
+Membre --> UC10
+Membre --> UC11
+Membre --> UC12
+Membre --> UC13
+Membre --> UC14
+Membre --> UC15
+Membre --> UC16
+Membre --> UC17
+
+Admin --> UC03
+Admin --> UC04
+Admin --> UC18
+Admin --> UC19
+Admin --> UC20
+Admin --> UC21
+Admin --> UC22
+
+@enduml
