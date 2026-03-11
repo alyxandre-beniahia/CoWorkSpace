@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Git
+.git/
+.gitignore
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Environment (ne jamais les inclure dans une image)
+.env
+.env.*
+!.env.example
+
+# Logs et cache
+*.log
+.npm
+.cache
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+*.md
+!README.md
+
+# Tests
+coverage/
+**/*.test.*
+**/*.spec.*

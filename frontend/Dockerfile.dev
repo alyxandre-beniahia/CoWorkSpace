@@ -1,0 +1,14 @@
+# Image de base pour le développement (hot reload)
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copie des fichiers de dépendances
+COPY package.json package-lock.json* ./
+
+# Installation des dépendances
+RUN npm ci 2>/dev/null || npm install
+
+# Le code source est monté via volume dans docker-compose
+# Vite en mode dev avec hot reload
+CMD ["npm", "run", "dev"]

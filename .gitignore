@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Environment (ne pas versionner les secrets)
+.env
+.env.*
+!.env.example
+
+# Build / output
+dist/
+build/
+.next/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*.swo
+
+# Testing
+coverage/
+.nyc_output/
+
+# Prisma
+backend/prisma/*.db
+backend/prisma/*.db-journal

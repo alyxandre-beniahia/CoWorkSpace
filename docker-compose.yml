@@ -1,0 +1,67 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: coworkspace-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cowork}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cowork_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-coworkspace_dev}
+    volumes:
+      - coworkspace_pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - coworkspace_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cowork} -d ${POSTGRES_DB:-coworkspace_dev}"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: coworkspace-backend
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cowork}:${POSTGRES_PASSWORD:-cowork_dev}@db:5432/${POSTGRES_DB:-coworkspace_dev}
+      NODE_ENV: development
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-prod}
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+    ports:
+      - "3002:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - coworkspace_net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: coworkspace-frontend
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3002}
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - coworkspace_net
+
+volumes:
+  coworkspace_pgdata:
+  backend_node_modules:
+  frontend_node_modules:
+
+networks:
+  coworkspace_net:
+    driver: bridge

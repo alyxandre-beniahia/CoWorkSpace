@@ -1,0 +1,19 @@
+# Image de base pour le développement (hot reload)
+# Utilisation de slim (Debian) au lieu d'alpine : évite "Empty reply from server" avec Nest en Docker
+FROM node:20-slim
+
+WORKDIR /app
+
+# Copie des fichiers de dépendances (lock file optionnel)
+COPY package.json package-lock.json* ./
+
+# Entrypoint pour générer le client Prisma avant de lancer l'app (schéma monté en volume)
+COPY docker-entrypoint.dev.sh /docker-entrypoint.dev.sh
+RUN chmod +x /docker-entrypoint.dev.sh
+
+# Installation des dépendances (node_modules restera dans un volume en run)
+RUN npm ci 2>/dev/null || npm install
+
+# Le code source est monté via volume dans docker-compose
+ENTRYPOINT ["/docker-entrypoint.dev.sh"]
+CMD ["npm", "run", "start:dev"]
