@@ -7,10 +7,189 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Modèles à compléter selon le cahier des charges
+// ---------------------------------------------------------------------------
+// Enums : on évite les typos et on garde tout le monde aligné (API + BDD)
+// ---------------------------------------------------------------------------
+enum SpaceType {
+  MEETING_ROOM
+  HOT_DESK
+  OPEN_SPACE
+}
+
+enum SpaceStatus {
+  AVAILABLE
+  MAINTENANCE
+  OCCUPIED
+}
+
+enum NotificationType {
+  SIGNUP_CONFIRMATION
+  RESERVATION_CONFIRMATION
+  RESERVATION_REMINDER_24H
+  RESERVATION_CANCELLED
+}
+
+enum TokenType {
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
+}
+
+// ---------------------------------------------------------------------------
+// Rôles : slug pour le code (admin, member), name pour l’affichage
+// ---------------------------------------------------------------------------
+model Role {
+  id    String  @id @default(cuid())
+  name  String  // "Administrateur", "Membre", etc.
+  slug  String  @unique // ce qu’on utilise dans les guards : "admin", "member"
+  users User[]
+}
+
+// ---------------------------------------------------------------------------
+// Utilisateurs
+// ---------------------------------------------------------------------------
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String    @id @default(cuid())
+  firstname       String
+  lastname        String
+  email           String    @unique
+  password        String
+  phone           String?
+  isActive        Boolean   @default(true)
+  avatarUrl       String?
+  emailVerifiedAt DateTime?
+  approvedAt      DateTime?
+  approvedById    String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  roleId         String
+  role           Role       @relation(fields: [roleId], references: [id])
+  approvedBy     User?      @relation("ApprovedBy", fields: [approvedById], references: [id])
+  approvedUsers  User[]     @relation("ApprovedBy")
+
+  sessions         Session[]
+  userTokens       UserToken[]
+  reservations     Reservation[]
+  notificationLogs NotificationLog[]
+}
+
+// ---------------------------------------------------------------------------
+// Tokens : mot de passe oublié, validation d’email, etc.
+// ---------------------------------------------------------------------------
+model UserToken {
+  id        String    @id @default(cuid())
+  type      TokenType
+  token     String
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Sessions : on garde la session dans un cookie HttpOnly
+// ---------------------------------------------------------------------------
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Espaces : postes, salles, open space…
+// ---------------------------------------------------------------------------
+model Space {
+  id          String      @id @default(cuid())
+  name        String
+  code        String?     @unique // pratique pour les bureaux : A01, M02… (filtrage, plan)
+  type        SpaceType
+  capacity    Int         // combien de personnes tiennent dedans
+  status      SpaceStatus @default(AVAILABLE)
+  description String?     // pour afficher un petit texte sur la fiche (surtout les salles)
+  positionX   Float?      // coordonnées sur le plan (React-Konva)
+  positionY   Float?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  reservations     Reservation[]
+  spaceEquipements SpaceEquipement[]
+
+  @@index([name])
+}
+
+// ---------------------------------------------------------------------------
+// Équipements : vidéoproj, tableau, visio…
+// ---------------------------------------------------------------------------
+model Equipement {
+  id               String   @id @default(cuid())
+  name             String
+  spaceEquipements SpaceEquipement[]
+
+  @@index([name])
+}
+
+// ---------------------------------------------------------------------------
+// Qui a quoi : un espace peut avoir plusieurs équipements, et inversement
+// ---------------------------------------------------------------------------
+model SpaceEquipement {
+  id           String @id @default(cuid())
+  spaceId      String
+  equipementId String
+
+  space      Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  equipement Equipement @relation(fields: [equipementId], references: [id], onDelete: Cascade)
+
+  @@unique([spaceId, equipementId])
+  @@index([spaceId])
+  @@index([equipementId])
+}
+
+// ---------------------------------------------------------------------------
+// Réservations
+// ---------------------------------------------------------------------------
+model Reservation {
+  id              String    @id @default(cuid())
+  startDatetime   DateTime
+  endDatetime     DateTime  // à vérifier en code : fin >= début
+  isPrivate       Boolean   @default(false)
+  title           String?   // "Réunion équipe" ou masqué si c’est privé
+  // format RRULE si récurrent (ex. FREQ=WEEKLY;BYDAY=TU;UNTIL=20240601)
+  recurrenceRule  String?
+  recurrenceEndAt DateTime? // jusqu’à quand ça se répète
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  spaceId String
+  space  Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  notificationLogs NotificationLog[]
+
+  @@index([spaceId, startDatetime, endDatetime]) // calendrier + détection des chevauchements
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Historique des notifs : qui a reçu quoi, quand (et retry si besoin)
+// ---------------------------------------------------------------------------
+model NotificationLog {
+  id            String          @id @default(cuid())
+  type          NotificationType
+  sentAt        DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt // utile si on refait un envoi ou qu’on log
+  reservationId String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reservation Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+
+  @@index([userId, type])
+  @@index([reservationId])
 }
