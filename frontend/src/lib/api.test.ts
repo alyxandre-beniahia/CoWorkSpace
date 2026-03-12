@@ -2,16 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { api, getApiUrl } from './api'
 
 describe('api', () => {
-  const originalEnv = import.meta.env.VITE_API_URL
-
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn())
-    import.meta.env.VITE_API_URL = 'http://localhost:3002'
+    vi.stubEnv('VITE_API_URL', 'http://localhost:3002')
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
-    import.meta.env.VITE_API_URL = originalEnv
+    vi.unstubAllEnvs()
   })
 
   describe('getApiUrl', () => {

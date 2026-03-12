@@ -22,7 +22,7 @@ export function ProfilePage() {
     e.preventDefault()
     setSubmitting(true)
     try {
-      const updated = await api<{
+      await api<{
         id: string
         email: string
         firstname: string
