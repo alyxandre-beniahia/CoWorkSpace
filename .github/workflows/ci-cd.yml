@@ -163,6 +163,12 @@ jobs:
             ERROR_DETAILS="Aucune erreur détectée."
           fi
 
+          # Éviter les doublons : ne pas notifier le push de merge de PR
+          if [ "$EVENT_NAME" = "push" ] && echo "$COMMIT_MESSAGE" | grep -q "Merge pull request"; then
+            echo "Notification ignorée pour le commit de merge de PR (déjà notifiée sur l'événement pull_request)."
+            exit 0
+          fi
+
           cat <<EOF > /tmp/card.json
           {
             "cards": [
