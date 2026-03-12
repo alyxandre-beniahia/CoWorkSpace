@@ -1,4 +1,6 @@
+import { Link } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 
 export function AdminPage() {
   return (
@@ -6,12 +8,15 @@ export function AdminPage() {
       <Card>
         <CardHeader>
           <CardTitle>Administration</CardTitle>
-          <CardDescription>Tableau de bord admin – à venir (admin/dashboard)</CardDescription>
+          <CardDescription>Tableau de bord admin – statistiques à venir (admin/dashboard)</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <p className="text-muted-foreground text-sm">
-            Vous êtes connecté en tant qu’administrateur. Les fonctionnalités admin (membres, espaces, dashboard) seront ajoutées dans les prochaines features.
+            Vous êtes connecté en tant qu'administrateur.
           </p>
+          <Link to="/admin/membres">
+            <Button>Gérer les membres</Button>
+          </Link>
         </CardContent>
       </Card>
     </div>

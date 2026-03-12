@@ -38,6 +38,7 @@ describe('GetMeUseCase', () => {
       lastname: expect.any(String),
       role: { slug: 'admin' },
     });
+    expect(result).toHaveProperty('phone');
   });
 
   it('lance NotFoundException si utilisateur non trouvé', async () => {

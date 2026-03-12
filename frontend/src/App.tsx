@@ -12,6 +12,8 @@ import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 import { EspacesPage } from '@/pages/EspacesPage'
 import { AdminPage } from '@/pages/AdminPage'
+import { AdminMembresPage } from '@/pages/AdminMembresPage'
+import { AdminLayout } from '@/components/AdminLayout'
 import { SpaceDetailPage } from '@/pages/SpaceDetailPage'
 
 function App() {
@@ -36,10 +38,13 @@ function App() {
               path="admin"
               element={
                 <ProtectedRoute>
-                  <AdminPage />
+                  <AdminLayout />
                 </ProtectedRoute>
               }
-            />
+            >
+              <Route index element={<AdminPage />} />
+              <Route path="membres" element={<AdminMembresPage />} />
+            </Route>
           </Route>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/inscription" element={<RegisterPage />} />

@@ -14,6 +14,7 @@ function TestConsumer() {
     <div>
       <span data-testid="loading">{String(auth.loading)}</span>
       <span data-testid="user">{auth.user ? auth.user.email : 'none'}</span>
+      <span data-testid="user-firstname">{auth.user ? auth.user.firstname : ''}</span>
       <button type="button" onClick={() => auth.logout()}>
         Déconnexion
       </button>
@@ -22,6 +23,12 @@ function TestConsumer() {
         onClick={() => auth.login('admin@test.com', 'password123')}
       >
         Login
+      </button>
+      <button
+        type="button"
+        onClick={() => auth.user && auth.updateUser({ ...auth.user, firstname: 'Updated' })}
+      >
+        Update firstname
       </button>
     </div>
   )
@@ -115,5 +122,30 @@ describe('AuthContext', () => {
     await userEvent.click(screen.getByText('Déconnexion'))
     expect(screen.getByTestId('user').textContent).toBe('none')
     expect(localStorage.getItem('coworkspace_token')).toBeNull()
+  })
+
+  it('updateUser met à jour le user en mémoire sans refaire GET /auth/me', async () => {
+    const initialUser = {
+      id: '1',
+      email: 'u@test.com',
+      firstname: 'Initial',
+      lastname: 'T',
+      role: { slug: 'member' as const },
+    }
+    mockApi.mockResolvedValue(initialUser)
+    localStorage.setItem('coworkspace_token', 't')
+    render(
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>,
+    )
+    await waitFor(() => {
+      expect(screen.getByTestId('user-firstname').textContent).toBe('Initial')
+    })
+    const meCallsBefore = mockApi.mock.calls.filter((c) => c[0] === '/auth/me').length
+    await userEvent.click(screen.getByText('Update firstname'))
+    expect(screen.getByTestId('user-firstname').textContent).toBe('Updated')
+    const meCallsAfter = mockApi.mock.calls.filter((c) => c[0] === '/auth/me').length
+    expect(meCallsAfter).toBe(meCallsBefore)
   })
 })

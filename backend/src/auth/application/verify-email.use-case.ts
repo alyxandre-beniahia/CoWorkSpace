@@ -11,38 +11,47 @@ export class VerifyEmailUseCase {
 
   /** Marque l’email comme vérifié et active le compte (lien cliqué dans l’email). */
   async run(token: string): Promise<VerifyEmailResult> {
-    if (!token) {
+    if (!token || typeof token !== 'string') {
       throw new BadRequestException('Token manquant');
     }
+
+    const tokenTrimmed = token.trim();
 
     const userToken = await this.prisma.userToken.findFirst({
       where: {
         type: 'EMAIL_VERIFICATION',
-        token,
+        token: tokenTrimmed,
         deletedAt: null,
       },
       include: { user: true },
     });
 
-    if (!userToken || !userToken.user) {
-      throw new NotFoundException('Lien invalide ou expiré');
+    if (userToken?.user) {
+      await this.prisma.$transaction([
+        this.prisma.user.update({
+          where: { id: userToken.userId },
+          data: {
+            emailVerifiedAt: userToken.user.emailVerifiedAt ?? new Date(),
+            // isActive reste false : validation par l'admin (admin/membres)
+          },
+        }),
+        this.prisma.userToken.update({
+          where: { id: userToken.id },
+          data: { deletedAt: new Date() },
+        }),
+      ]);
+      return { message: 'Email vérifié. Votre inscription est en attente de validation par un administrateur.' };
     }
 
-    await this.prisma.$transaction([
-      this.prisma.user.update({
-        where: { id: userToken.userId },
-        data: {
-          emailVerifiedAt: userToken.user.emailVerifiedAt ?? new Date(),
-          isActive: true,
-        },
-      }),
-      this.prisma.userToken.update({
-        where: { id: userToken.id },
-        data: { deletedAt: new Date() },
-      }),
-    ]);
+    const alreadyUsedToken = await this.prisma.userToken.findFirst({
+      where: { type: 'EMAIL_VERIFICATION', token: tokenTrimmed },
+      include: { user: true },
+    });
+    if (alreadyUsedToken?.user?.emailVerifiedAt) {
+      return { message: 'Votre email est déjà vérifié. Votre inscription est en attente de validation par un administrateur.' };
+    }
 
-    return { message: 'Email vérifié. Vous pouvez maintenant vous connecter.' };
+    throw new NotFoundException('Lien invalide ou expiré');
   }
 }
 

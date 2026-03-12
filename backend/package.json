@@ -13,6 +13,7 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "npx ts-node prisma/seed.ts",
     "test": "jest",
+    "test:local": "DATABASE_URL=\"postgresql://cowork:cowork_dev@localhost:5433/coworkspace_dev\" jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage"
   },
@@ -30,6 +31,7 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.0",
+    "resend": "^6.9.3",
     "rxjs": "^7.8.0"
   },
   "devDependencies": {

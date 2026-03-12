@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../../notification/infrastructure/email.service';
 import type { RegisterDto } from '../dto/register.dto';
 import { randomBytes } from 'crypto';
 
@@ -10,7 +11,10 @@ type RegisterResult = {
 
 @Injectable()
 export class RegisterUseCase {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+  ) {}
 
   /** Crée un compte inactif et un token de vérification email (l’envoi d’email est géré ailleurs). */
   async run(dto: RegisterDto): Promise<RegisterResult> {
@@ -51,6 +55,12 @@ export class RegisterUseCase {
         userId: user.id,
       },
     });
+
+    try {
+      await this.emailService.sendVerificationEmail(user.email, token);
+    } catch (err) {
+      console.error('[RegisterUseCase] Envoi email vérification échoué:', err);
+    }
 
     return {
       message: 'Inscription enregistrée. Vérifiez vos emails pour valider votre compte.',

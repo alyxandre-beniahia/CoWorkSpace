@@ -3,8 +3,8 @@
 FROM node:20-slim
 
 WORKDIR /app
-# Installer OpenSSL pour Prisma (migrations, schema engine)
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+# Installer OpenSSL pour Prisma + procps pour Nest (mode watch utilise `ps`)
+RUN apt-get update -y && apt-get install -y openssl procps && rm -rf /var/lib/apt/lists/*
 # Copie des fichiers de dépendances (lock file optionnel)
 COPY package.json package-lock.json* ./
 

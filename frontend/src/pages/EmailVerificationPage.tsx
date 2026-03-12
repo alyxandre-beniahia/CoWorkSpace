@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ export function EmailVerificationPage() {
   const navigate = useNavigate()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState<string>('')
+  const successRef = useRef(false)
 
   useEffect(() => {
     let cancelled = false
@@ -24,13 +25,14 @@ export function EmailVerificationPage() {
     }
     api<{ message: string }>(`/auth/verify-email?token=${encodeURIComponent(token)}`)
       .then((res) => {
+        successRef.current = true
         if (!cancelled) {
           setStatus('success')
           setMessage(res.message || 'Email vérifié. Vous pouvez maintenant vous connecter.')
         }
       })
       .catch((err) => {
-        if (!cancelled) {
+        if (!cancelled && !successRef.current) {
           setStatus('error')
           setMessage(err instanceof Error ? err.message : 'Lien invalide ou expiré')
         }
