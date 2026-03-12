@@ -8,6 +8,8 @@ Ce dossier rassemble les livrables de conception demandés pour le projet.
 |---------|-------------|
 | `01-diagramme-cas-utilisation.puml` | **Diagramme de cas d’utilisation** – Acteurs (Membre, Administrateur, Système Email) et fonctionnalités principales du MVP |
 | `02-user-stories.md` | **User stories** – Format tableau (En tant que / Je veux / Afin de / Critères), aligné au cahier des charges |
+| `04-charte-graphique.md` | **Charte graphique** – Palette, typographie, statuts des espaces, patterns UI, stack (React 19, Tailwind v4, shadcn, FullCalendar) |
+| `05-plan-attaque.md` | **Plan d'attaque** – Découpage par logique métier, features autonomes, répartition 2 devs / 4 jours, plan jour par jour, règles Git |
 
 ## Diagramme de cas d’utilisation
 
