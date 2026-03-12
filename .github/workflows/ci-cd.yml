@@ -1,0 +1,256 @@
+# Name
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPO }}
+
+jobs:
+  # Job 1: Tests et validation du code
+  test:
+    name: Build backend & frontend
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: ./backend
+        run: npm run prisma:generate
+
+      - name: Build backend
+        working-directory: ./backend
+        run: npm run build
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+
+  # Job 2: Build et push des images Docker
+  build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: test
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.base_ref == 'main')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.DOCKERHUB_REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata for backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_IMAGE }}
+          tags: |
+            type=raw,value=backend-main,enable={{is_default_branch}}
+            type=sha,prefix=backend-,format=short
+            type=raw,value=backend-latest,enable={{is_default_branch}}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.DOCKER_IMAGE }}:backend-buildcache
+          cache-to: type=registry,ref=${{ env.DOCKER_IMAGE }}:backend-buildcache,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Extract metadata for frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_IMAGE }}
+          tags: |
+            type=raw,value=frontend-main,enable={{is_default_branch}}
+            type=sha,prefix=frontend-,format=short
+            type=raw,value=frontend-latest,enable={{is_default_branch}}
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.DOCKER_IMAGE }}:frontend-buildcache
+          cache-to: type=registry,ref=${{ env.DOCKER_IMAGE }}:frontend-buildcache,mode=max
+          platforms: linux/amd64,linux/arm64
+
+  # Job 3: Notification Google Chat (carte)
+  notify:
+    name: Notify Google Chat
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: always()
+    env:
+      GOOGLE_CHAT_WEBHOOK: ${{ secrets.GOOGLE_CHAT_WEBHOOK }}
+      OVERALL_STATUS: ${{ contains(needs.*.result, 'failure') && 'Échec' || 'Succès' }}
+      REPO_URL: ${{ github.event.repository.html_url }}
+      BRANCH_NAME: ${{ github.ref_name }}
+      ACTOR: ${{ github.actor }}
+
+    steps:
+      - name: Send card to Google Chat
+        run: |
+          STATUS_ICON="✅"
+          if [ "$OVERALL_STATUS" = "Échec" ]; then
+            STATUS_ICON="❌"
+          fi
+
+          TIMESTAMP="$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+
+          cat <<EOF > /tmp/card.json
+          {
+            "cardsV2": [
+              {
+                "cardId": "ci-cd-status",
+                "card": {
+                  "header": {
+                    "title": "CI/CD CoWorkSpace",
+                    "subtitle": "$STATUS_ICON Statut: $OVERALL_STATUS"
+                  },
+                  "sections": [
+                    {
+                      "header": "Détails de l'exécution",
+                      "widgets": [
+                        {
+                          "keyValue": {
+                            "topLabel": "Déclenché par",
+                            "content": "${ACTOR}"
+                          }
+                        },
+                        {
+                          "keyValue": {
+                            "topLabel": "Branche",
+                            "content": "${BRANCH_NAME}"
+                          }
+                        },
+                        {
+                          "keyValue": {
+                            "topLabel": "Dépôt",
+                            "content": "<a href=\"${REPO_URL}\">${REPO_URL}</a>"
+                          }
+                        },
+                        {
+                          "keyValue": {
+                            "topLabel": "Statut global",
+                            "content": "$OVERALL_STATUS"
+                          }
+                        },
+                        {
+                          "keyValue": {
+                            "topLabel": "Date / heure",
+                            "content": "${TIMESTAMP}"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+          EOF
+
+          curl -X POST -H "Content-Type: application/json; charset=UTF-8" \
+            -d @/tmp/card.json \
+            "$GOOGLE_CHAT_WEBHOOK"
+
+  # Job 4: Déploiement sur le serveur de production (exemple, désactivé)
+  # deploy:
+  #   name: Deploy to Production
+  #   runs-on: ubuntu-latest
+  #   needs: build
+  #   if: github.ref == 'refs/heads/main'
+  #   environment:
+  #     name: production
+  #     url: https://coworkspace.example.com
+    
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+
+  #     - name: Deploy to server via SSH
+  #       uses: appleboy/ssh-action@v1.0.0
+  #       with:
+  #         host: ${{ secrets.DEPLOY_HOST }}
+  #         username: ${{ secrets.DEPLOY_USER }}
+  #         key: ${{ secrets.DEPLOY_SSH_KEY }}
+  #         port: ${{ secrets.DEPLOY_PORT || 22 }}
+  #         script: |
+  #           # Naviguer vers le répertoire de l'application
+  #           cd ${{ secrets.DEPLOY_PATH || '/opt/coworkspace' }}
+            
+  #           # Sauvegarder la configuration actuelle
+  #           cp .env .env.backup
+            
+  #           # Pull les dernières images
+  #           docker-compose pull
+            
+  #           # Arrêter les conteneurs actuels
+  #           docker-compose down
+            
+  #           # Démarrer les nouveaux conteneurs
+  #           docker-compose up -d
+            
+  #           # Nettoyer les anciennes images
+  #           docker image prune -af
+            
+  #           # Vérifier que les services sont en cours d'exécution
+  #           docker-compose ps
+            
+  #           echo "Déploiement terminé avec succès pour CoWorkSpace!"
+
+  #     - name: Health check
+  #       run: |
+  #         sleep 10
+  #         curl -f ${{ secrets.PRODUCTION_URL }}/health || exit 1
+
+  #     - name: Notify Google Chat - Tests Success
+  #       if: success()
+  #       run: |
+  #         curl -X POST -H "Content-Type: application/json" \
+  #         -d "{\"text\":\"✅ Tous les tests backend et frontend sont passés sur '${GITHUB_REF}' !\"}" \
+  #         ${{ secrets.GOOGLE_CHAT_WEBHOOK }}
+
+  #     - name: Notify Google Chat - Tests Failure
+  #       if: failure()
+  #       run: |
+  #         curl -X POST -H "Content-Type: application/json" \
+  #         -d "{\"text\":\"❌ Échec d’un test sur '${GITHUB_REF}' !\"}" \
+  #         ${{ secrets.GOOGLE_CHAT_WEBHOOK }}
