@@ -217,15 +217,13 @@ jobs:
                     "header": "Description",
                     "widgets": [
                       {
-                        "keyValue": {
-                          "topLabel": "Résumé",
-                          "content": "${DESCRIPTION}"
+                        "textParagraph": {
+                          "text": "<b>Résumé</b><br>${DESCRIPTION}"
                         }
                       },
                       {
-                        "keyValue": {
-                          "topLabel": "Erreurs",
-                          "content": "${ERROR_DETAILS}"
+                        "textParagraph": {
+                          "text": "<b>Erreurs</b><br>${ERROR_DETAILS}"
                         }
                       }
                     ]
