@@ -165,7 +165,6 @@ jobs:
 
           cat <<EOF > /tmp/card.json
           {
-            "text": "$STATUS_ICON CI/CD CoWorkSpace - $OVERALL_STATUS",
             "cards": [
               {
                 "header": {
