@@ -77,6 +77,22 @@ export function LoginPage() {
                 className="min-h-[44px] md:min-h-0"
               />
             </div>
+            <div className="flex justify-between items-center text-sm">
+              <button
+                type="button"
+                className="text-primary hover:underline"
+                onClick={() => navigate('/mot-de-passe-oublie')}
+              >
+                Mot de passe oublié ?
+              </button>
+              <button
+                type="button"
+                className="text-primary hover:underline"
+                onClick={() => navigate('/inscription')}
+              >
+                Créer un compte
+              </button>
+            </div>
             <Button type="submit" className="w-full min-h-[44px] md:min-h-0" disabled={submitting}>
               {submitting ? 'Connexion…' : 'Se connecter'}
             </Button>
