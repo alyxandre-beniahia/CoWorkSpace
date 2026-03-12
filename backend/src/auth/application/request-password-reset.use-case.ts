@@ -11,6 +11,7 @@ type RequestPasswordResetResult = {
 export class RequestPasswordResetUseCase {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Demande de réinitialisation : crée un token et prépare l’envoi d’email (module notification). */
   async run(dto: RequestPasswordResetDto): Promise<RequestPasswordResetResult> {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
 
+/** Inscription : envoi vers POST /auth/register, redirection vers login, message invitant à vérifier l’email. */
 export function RegisterPage() {
   const navigate = useNavigate()
   const [firstname, setFirstname] = useState('')

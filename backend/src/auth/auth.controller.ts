@@ -1,3 +1,7 @@
+/**
+ * Contrôleur auth : login, GET /me, inscription, validation email, profil (PATCH /me),
+ * mot de passe oublié et réinitialisation par token.
+ */
 import { Controller, Post, Get, Patch, Body, UseGuards, Request, Query } from '@nestjs/common';
 import { JwtAuthGuard } from './infrastructure/jwt-auth.guard';
 import { LoginUseCase } from './application/login.use-case';
@@ -28,6 +32,7 @@ export class AuthController {
     private readonly resetPasswordUseCase: ResetPasswordUseCase,
   ) {}
 
+  // ——— Session : login et profil courant
   @Post('login')
   async login(@Body() dto: LoginDto) {
     return this.loginUseCase.run(dto);
@@ -39,6 +44,7 @@ export class AuthController {
     return this.getMeUseCase.run(req.user.userId);
   }
 
+  // ——— Inscription et validation email
   @Post('register')
   async register(@Body() dto: RegisterDto) {
     return this.registerUseCase.run(dto);
@@ -49,6 +55,7 @@ export class AuthController {
     return this.verifyEmailUseCase.run(token);
   }
 
+  // ——— Profil et mot de passe
   @Patch('me')
   @UseGuards(JwtAuthGuard)
   async updateProfile(@Request() req: AuthRequest, @Body() dto: UpdateProfileDto) {

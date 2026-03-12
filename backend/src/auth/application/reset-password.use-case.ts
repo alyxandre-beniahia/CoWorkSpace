@@ -11,6 +11,7 @@ type ResetPasswordResult = {
 export class ResetPasswordUseCase {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Réinitialise le mot de passe avec le token reçu par email (lien « mot de passe oublié »). */
   async run(dto: ResetPasswordDto): Promise<ResetPasswordResult> {
     if (!dto.token) {
       throw new BadRequestException('Token manquant');

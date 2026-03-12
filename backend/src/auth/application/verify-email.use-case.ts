@@ -9,6 +9,7 @@ type VerifyEmailResult = {
 export class VerifyEmailUseCase {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Marque l’email comme vérifié et active le compte (lien cliqué dans l’email). */
   async run(token: string): Promise<VerifyEmailResult> {
     if (!token) {
       throw new BadRequestException('Token manquant');

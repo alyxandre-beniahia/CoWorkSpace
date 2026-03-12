@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 
+/** Page « lien cliqué » : token en query (reçu par email), appel GET /auth/verify-email pour valider le compte. */
 export function EmailVerificationPage() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -11,22 +12,32 @@ export function EmailVerificationPage() {
   const [message, setMessage] = useState<string>('')
 
   useEffect(() => {
+    let cancelled = false
     const params = new URLSearchParams(location.search)
     const token = params.get('token')
     if (!token) {
-      setStatus('error')
-      setMessage('Lien invalide')
+      if (!cancelled) {
+        setStatus('error')
+        setMessage('Lien invalide')
+      }
       return
     }
     api<{ message: string }>(`/auth/verify-email?token=${encodeURIComponent(token)}`)
       .then((res) => {
-        setStatus('success')
-        setMessage(res.message || 'Email vérifié. Vous pouvez maintenant vous connecter.')
+        if (!cancelled) {
+          setStatus('success')
+          setMessage(res.message || 'Email vérifié. Vous pouvez maintenant vous connecter.')
+        }
       })
       .catch((err) => {
-        setStatus('error')
-        setMessage(err instanceof Error ? err.message : 'Lien invalide ou expiré')
+        if (!cancelled) {
+          setStatus('error')
+          setMessage(err instanceof Error ? err.message : 'Lien invalide ou expiré')
+        }
       })
+    return () => {
+      cancelled = true
+    }
   }, [location.search])
 
   return (

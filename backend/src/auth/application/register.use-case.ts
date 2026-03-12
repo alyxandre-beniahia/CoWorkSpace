@@ -12,6 +12,7 @@ type RegisterResult = {
 export class RegisterUseCase {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Crée un compte inactif et un token de vérification email (l’envoi d’email est géré ailleurs). */
   async run(dto: RegisterDto): Promise<RegisterResult> {
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },

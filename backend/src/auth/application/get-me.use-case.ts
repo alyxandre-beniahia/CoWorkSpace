@@ -6,9 +6,11 @@ export type MeResult = {
   email: string;
   firstname: string;
   lastname: string;
+  phone?: string | null;
   role: { slug: string };
 };
 
+/** Retourne le profil de l’utilisateur connecté (pour affichage et formulaire profil). */
 @Injectable()
 export class GetMeUseCase {
   constructor(private readonly prisma: PrismaService) {}
@@ -21,6 +23,7 @@ export class GetMeUseCase {
         email: true,
         firstname: true,
         lastname: true,
+        phone: true,
         role: { select: { slug: true } },
       },
     });

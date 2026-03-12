@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
 
+/** Mot de passe oublié : saisie email → token envoyé par email → lien vers page reset avec token en query. */
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)

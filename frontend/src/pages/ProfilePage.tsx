@@ -4,14 +4,16 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
+import type { User } from '@/contexts/AuthContext'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
 
+/** Formulaire profil : champs pré-remplis depuis le contexte, sauvegarde via PATCH /auth/me. */
 export function ProfilePage() {
-  const { user, token, setToken } = useAuth()
+  const { user, token, updateUser } = useAuth()
   const [firstname, setFirstname] = useState(user?.firstname ?? '')
   const [lastname, setLastname] = useState(user?.lastname ?? '')
-  const [phone, setPhone] = useState((user as any)?.phone ?? '')
+  const [phone, setPhone] = useState(user?.phone ?? '')
   const [submitting, setSubmitting] = useState(false)
 
   if (!user || !token) {
@@ -22,14 +24,7 @@ export function ProfilePage() {
     e.preventDefault()
     setSubmitting(true)
     try {
-      await api<{
-        id: string
-        email: string
-        firstname: string
-        lastname: string
-        phone?: string | null
-        role: { slug: string }
-      }>('/auth/me', {
+      const updated = await api<User>('/auth/me', {
         method: 'PATCH',
         body: JSON.stringify({
           firstname: firstname.trim(),
@@ -38,9 +33,7 @@ export function ProfilePage() {
         }),
         token,
       })
-      // On met à jour le user dans le contexte en rechargeant /auth/me
-      // via un changement de token forcé (setToken déclenchera le useEffect).
-      setToken(token)
+      updateUser(updated)
       toast.success('Profil mis à jour')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Impossible de mettre à jour le profil')

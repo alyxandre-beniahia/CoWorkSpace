@@ -6,6 +6,7 @@ import type { UpdateProfileDto } from '../dto/update-profile.dto';
 export class UpdateProfileUseCase {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Met à jour prénom, nom et téléphone de l’utilisateur connecté. */
   async run(userId: string, dto: UpdateProfileDto) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {

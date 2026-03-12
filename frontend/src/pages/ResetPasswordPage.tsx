@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
 
+/** Réinitialisation MDP : token en query (lien reçu par email), envoi nouveau mot de passe vers POST /auth/reset-password. */
 export function ResetPasswordPage() {
   const location = useLocation()
   const navigate = useNavigate()

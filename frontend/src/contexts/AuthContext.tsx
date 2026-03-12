@@ -15,6 +15,7 @@ export type User = {
   email: string;
   firstname: string;
   lastname: string;
+  phone?: string | null;
   role: { slug: string };
 };
 
@@ -28,6 +29,8 @@ type AuthContextValue = AuthState & {
   login: (email: string, password: string) => Promise<User>;
   logout: () => void;
   setToken: (token: string | null) => void;
+  /** Met à jour le user en mémoire (ex. après édition du profil sans refaire GET /me). */
+  updateUser: (user: User | null) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -44,6 +47,11 @@ function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+/**
+ * Contexte d’authentification : token en localStorage, user chargé via GET /auth/me,
+ * login / logout / setToken. updateUser permet de mettre à jour le user en mémoire
+ * (ex. après un PATCH /auth/me) sans refaire un GET.
+ */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setTokenState] = useState<string | null>(() => loadToken());
   const [user, setUser] = useState<User | null>(null);
@@ -89,6 +97,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTokenState(t);
   }, []);
 
+  const updateUser = useCallback((u: User | null) => {
+    setUser(u);
+  }, []);
+
   const value: AuthContextValue = {
     token,
     user,
@@ -96,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     setToken,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
