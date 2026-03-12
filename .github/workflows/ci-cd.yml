@@ -23,7 +23,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24.14.0'
 
       - name: Install backend dependencies
         working-directory: ./backend
@@ -169,70 +169,45 @@ jobs:
             exit 0
           fi
 
-          cat <<EOF > /tmp/card.json
-          {
-            "cards": [
-              {
-                "header": {
-                  "title": "CI/CD CoWorkSpace",
-                  "subtitle": "$STATUS_ICON Statut: $OVERALL_STATUS"
-                },
-                "sections": [
-                  {
-                    "header": "Détails de l'exécution",
-                    "widgets": [
-                      {
-                        "keyValue": {
-                          "topLabel": "Déclenché par",
-                          "content": "${ACTOR}"
-                        }
-                      },
-                      {
-                        "keyValue": {
-                          "topLabel": "Branche",
-                          "content": "${BRANCH_NAME}"
-                        }
-                      },
-                      {
-                        "keyValue": {
-                          "topLabel": "Dépôt",
-                          "content": "${REPO_URL}"
-                        }
-                      },
-                      {
-                        "keyValue": {
-                          "topLabel": "Statut global",
-                          "content": "$OVERALL_STATUS"
-                        }
-                      },
-                      {
-                        "keyValue": {
-                          "topLabel": "Date / heure",
-                          "content": "${TIMESTAMP}"
-                        }
-                      }
-                    ]
+          # Construire le JSON avec jq pour échapper correctement tous les champs (guillemets, retours à la ligne, etc.)
+          jq -n \
+            --arg status_icon "$STATUS_ICON" \
+            --arg overall_status "$OVERALL_STATUS" \
+            --arg actor "$ACTOR" \
+            --arg branch "$BRANCH_NAME" \
+            --arg repo_url "$REPO_URL" \
+            --arg timestamp "$TIMESTAMP" \
+            --arg description "$DESCRIPTION" \
+            --arg error_details "$ERROR_DETAILS" \
+            '{
+              cards: [
+                {
+                  header: {
+                    title: "CI/CD CoWorkSpace",
+                    subtitle: ($status_icon + " Statut: " + $overall_status)
                   },
-                  {
-                    "header": "Description",
-                    "widgets": [
-                      {
-                        "textParagraph": {
-                          "text": "<b>Résumé</b><br>${DESCRIPTION}"
-                        }
-                      },
-                      {
-                        "textParagraph": {
-                          "text": "<b>Erreurs</b><br>${ERROR_DETAILS}"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-          EOF
+                  sections: [
+                    {
+                      header: "Détails de l'\''exécution",
+                      widgets: [
+                        { keyValue: { topLabel: "Déclenché par", content: $actor } },
+                        { keyValue: { topLabel: "Branche", content: $branch } },
+                        { textParagraph: { text: ("<b>Dépôt</b><br><a href=\"" + $repo_url + "\" target=\"_blank\">Ouvrir le dépôt</a>") } },
+                        { keyValue: { topLabel: "Statut global", content: $overall_status } },
+                        { keyValue: { topLabel: "Date / heure", content: $timestamp } }
+                      ]
+                    },
+                    {
+                      header: "Description",
+                      widgets: [
+                        { textParagraph: { text: ("<b>Résumé</b><br>" + $description) } },
+                        { textParagraph: { text: ("<b>Erreurs</b><br>" + $error_details) } }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }' > /tmp/card.json
 
           curl -X POST -H "Content-Type: application/json; charset=UTF-8" \
             -d @/tmp/card.json \
