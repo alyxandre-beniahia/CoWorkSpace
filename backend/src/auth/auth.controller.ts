@@ -1,9 +1,18 @@
-import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, UseGuards, Request, Query } from '@nestjs/common';
 import { JwtAuthGuard } from './infrastructure/jwt-auth.guard';
 import { LoginUseCase } from './application/login.use-case';
 import { GetMeUseCase } from './application/get-me.use-case';
 import { LoginDto } from './dto/login.dto';
 import type { Request as ExpressRequest } from 'express';
+import { RegisterUseCase } from './application/register.use-case';
+import { VerifyEmailUseCase } from './application/verify-email.use-case';
+import { UpdateProfileUseCase } from './application/update-profile.use-case';
+import { RequestPasswordResetUseCase } from './application/request-password-reset.use-case';
+import { ResetPasswordUseCase } from './application/reset-password.use-case';
+import { RegisterDto } from './dto/register.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 type AuthRequest = ExpressRequest & { user: { userId: string; email: string; role: string } };
 
@@ -12,6 +21,11 @@ export class AuthController {
   constructor(
     private readonly loginUseCase: LoginUseCase,
     private readonly getMeUseCase: GetMeUseCase,
+    private readonly registerUseCase: RegisterUseCase,
+    private readonly verifyEmailUseCase: VerifyEmailUseCase,
+    private readonly updateProfileUseCase: UpdateProfileUseCase,
+    private readonly requestPasswordResetUseCase: RequestPasswordResetUseCase,
+    private readonly resetPasswordUseCase: ResetPasswordUseCase,
   ) {}
 
   @Post('login')
@@ -23,5 +37,31 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async me(@Request() req: AuthRequest) {
     return this.getMeUseCase.run(req.user.userId);
+  }
+
+  @Post('register')
+  async register(@Body() dto: RegisterDto) {
+    return this.registerUseCase.run(dto);
+  }
+
+  @Get('verify-email')
+  async verifyEmail(@Query('token') token: string) {
+    return this.verifyEmailUseCase.run(token);
+  }
+
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  async updateProfile(@Request() req: AuthRequest, @Body() dto: UpdateProfileDto) {
+    return this.updateProfileUseCase.run(req.user.userId, dto);
+  }
+
+  @Post('forgot-password')
+  async forgotPassword(@Body() dto: RequestPasswordResetDto) {
+    return this.requestPasswordResetUseCase.run(dto);
+  }
+
+  @Post('reset-password')
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.resetPasswordUseCase.run(dto);
   }
 }

@@ -15,6 +15,11 @@ export function Layout() {
           <Link to="/espaces">
             <Button variant="ghost" size="sm">Espaces</Button>
           </Link>
+          {user && (
+            <Link to="/profil">
+              <Button variant="ghost" size="sm">Profil</Button>
+            </Link>
+          )}
           {user?.role.slug === 'admin' && (
             <Link to="/admin">
               <Button variant="ghost" size="sm">Admin</Button>

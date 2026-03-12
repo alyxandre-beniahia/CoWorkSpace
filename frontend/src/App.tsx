@@ -5,6 +5,11 @@ import { Layout } from '@/components/Layout'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { HomePage } from '@/pages/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
+import { RegisterPage } from '@/pages/RegisterPage'
+import { EmailVerificationPage } from '@/pages/EmailVerificationPage'
+import { ProfilePage } from '@/pages/ProfilePage'
+import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 import { EspacesPage } from '@/pages/EspacesPage'
 import { AdminPage } from '@/pages/AdminPage'
 import { SpaceDetailPage } from '@/pages/SpaceDetailPage'
@@ -19,9 +24,28 @@ function App() {
             <Route index element={<HomePage />} />
             <Route path="espaces" element={<EspacesPage />} />
             <Route path="espaces/:id" element={<SpaceDetailPage />} />
-            <Route path="admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
+            <Route
+              path="profil"
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admin"
+              element={
+                <ProtectedRoute>
+                  <AdminPage />
+                </ProtectedRoute>
+              }
+            />
           </Route>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/inscription" element={<RegisterPage />} />
+          <Route path="/verification-email" element={<EmailVerificationPage />} />
+          <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} />
+          <Route path="/reset-mot-de-passe" element={<ResetPasswordPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

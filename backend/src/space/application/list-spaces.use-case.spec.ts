@@ -1,58 +1,75 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { SpaceRepository } from '../infrastructure/space.repository';
+import { PrismaModule } from '../../prisma/prisma.module';
+import { PrismaService } from '../../prisma/prisma.service';
+import { SpaceModule } from '../space.module';
 import { ListSpacesUseCase } from './list-spaces.use-case';
 
 describe('ListSpacesUseCase', () => {
   let useCase: ListSpacesUseCase;
-  let repository: jest.Mocked<Pick<SpaceRepository, 'list'>>;
-
-  const mockSpaces = [
-    {
-      id: 'space-1',
-      name: 'Salle A',
-      code: 'A01',
-      type: 'MEETING_ROOM',
-      capacity: 8,
-      status: 'AVAILABLE',
-      equipements: ['Vidéoprojecteur', 'Tableau'],
-    },
-  ];
+  let prisma: PrismaService;
+  let spaceId: string;
+  let equipementId: string;
 
   beforeEach(async () => {
-    repository = {
-      list: jest.fn().mockResolvedValue(mockSpaces),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        ListSpacesUseCase,
-        { provide: SpaceRepository, useValue: repository },
-      ],
+      imports: [PrismaModule, SpaceModule],
     }).compile();
 
     useCase = module.get(ListSpacesUseCase);
+    prisma = module.get(PrismaService);
+
+    const equipement = await prisma.equipement.create({
+      data: { name: `Vidéoprojecteur test ${Date.now()}` },
+    });
+    equipementId = equipement.id;
+
+    const space = await prisma.space.create({
+      data: {
+        name: `Salle A test ${Date.now()}`,
+        code: `A-${Math.floor(Math.random() * 1000)}`,
+        type: 'MEETING_ROOM',
+        capacity: 8,
+        status: 'AVAILABLE',
+        description: 'Salle de test pour ListSpacesUseCase',
+        spaceEquipements: {
+          create: {
+            equipementId: equipement.id,
+          },
+        },
+      },
+    });
+    spaceId = space.id;
+  });
+
+  afterEach(async () => {
+    await prisma.spaceEquipement.deleteMany({ where: { spaceId } });
+    await prisma.space.delete({ where: { id: spaceId } });
+    await prisma.equipement.delete({ where: { id: equipementId } });
   });
 
   it('retourne la liste des espaces du repository', async () => {
     const result = await useCase.run({});
 
-    expect(result).toEqual(mockSpaces);
-    expect(repository.list).toHaveBeenCalledWith({});
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: spaceId,
+        }),
+      ]),
+    );
   });
 
   it('passe les filtres (type, equipementId, capacityMin, capacityMax) au repository', async () => {
-    await useCase.run({
+    const result = await useCase.run({
       type: 'MEETING_ROOM',
-      equipementId: 'eq-1',
+      equipementId,
       capacityMin: 4,
       capacityMax: 10,
     });
 
-    expect(repository.list).toHaveBeenCalledWith({
-      type: 'MEETING_ROOM',
-      equipementId: 'eq-1',
-      capacityMin: 4,
-      capacityMax: 10,
-    });
+    expect(
+      result.find((s) => s.id === spaceId),
+    ).toBeTruthy();
   });
 });
