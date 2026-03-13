@@ -160,7 +160,8 @@ model Reservation {
   title           String?   // "Réunion équipe" ou masqué si c’est privé
   // format RRULE si récurrent (ex. FREQ=WEEKLY;BYDAY=TU;UNTIL=20240601)
   recurrenceRule  String?
-  recurrenceEndAt DateTime? // jusqu’à quand ça se répète
+  recurrenceEndAt  DateTime?
+  recurrenceGroupId String? // jusqu’à quand ça se répète
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?
