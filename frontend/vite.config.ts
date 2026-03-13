@@ -5,6 +5,15 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [tailwindcss(), react()],
+  optimizeDeps: {
+    include: [
+      '@fullcalendar/core',
+      '@fullcalendar/react',
+      '@fullcalendar/daygrid',
+      '@fullcalendar/timegrid',
+      '@fullcalendar/interaction',
+    ],
+  },
   css: {
     postcss: false,
   },
