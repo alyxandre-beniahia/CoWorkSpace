@@ -24,7 +24,7 @@ export function expandRecurrence(
   const durationMs = firstEnd.getTime() - firstStart.getTime();
   const dtstart = toICSDate(firstStart);
   const until = toICSDate(recurrenceEndAt);
-  const rruleStr = `DTSTART:${dtstart}Z\nRRULE:${recurrenceRule};UNTIL=${until}Z`;
+  const rruleStr = `DTSTART:${dtstart}\nRRULE:${recurrenceRule};UNTIL=${until}`;
 
   const rule = rrulestr(rruleStr);
   const startDates = rule.between(firstStart, recurrenceEndAt, true);
