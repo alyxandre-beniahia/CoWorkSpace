@@ -16,6 +16,9 @@ export function AdminLayout() {
         <Link to="/admin/membres">
           <Button variant="ghost" size="sm">Membres</Button>
         </Link>
+        <Link to="/admin/espaces">
+          <Button variant="ghost" size="sm">Espaces</Button>
+        </Link>
       </nav>
       <Outlet />
     </div>

@@ -44,6 +44,78 @@ async function main() {
     },
   });
 
+  // Espaces : 1 open space (50 postes) + 4 salles de réunion
+  const spaces = [
+    {
+      code: 'OPEN-SPACE',
+      name: 'Open space principal',
+      type: 'OPEN_SPACE' as const,
+      capacity: 50,
+      description: 'Grand open space avec 50 postes en libre-service.',
+      positionX: 120,
+      positionY: 120,
+    },
+    {
+      code: 'SR-A',
+      name: 'Salle Réunion A',
+      type: 'MEETING_ROOM' as const,
+      capacity: 6,
+      description: 'Salle de réunion pour 6 personnes.',
+      positionX: 480,
+      positionY: 60,
+    },
+    {
+      code: 'SR-B',
+      name: 'Salle Réunion B',
+      type: 'MEETING_ROOM' as const,
+      capacity: 8,
+      description: 'Salle de réunion pour 8 personnes.',
+      positionX: 480,
+      positionY: 160,
+    },
+    {
+      code: 'SR-C',
+      name: 'Salle Réunion C',
+      type: 'MEETING_ROOM' as const,
+      capacity: 10,
+      description: 'Salle de réunion pour 10 personnes.',
+      positionX: 480,
+      positionY: 260,
+    },
+    {
+      code: 'SR-D',
+      name: 'Salle Réunion D',
+      type: 'MEETING_ROOM' as const,
+      capacity: 12,
+      description: 'Grande salle de réunion pour 12 personnes.',
+      positionX: 480,
+      positionY: 360,
+    },
+  ];
+
+  for (const space of spaces) {
+    await prisma.space.upsert({
+      where: { code: space.code },
+      update: {
+        name: space.name,
+        type: space.type,
+        capacity: space.capacity,
+        description: space.description,
+        positionX: space.positionX,
+        positionY: space.positionY,
+      },
+      create: {
+        name: space.name,
+        code: space.code,
+        type: space.type,
+        capacity: space.capacity,
+        description: space.description,
+        positionX: space.positionX,
+        positionY: space.positionY,
+      },
+    });
+  }
+
   console.log('Seed OK: rôles admin/member et utilisateurs admin@test.com / member@test.com (mdp: password123)');
 }
 

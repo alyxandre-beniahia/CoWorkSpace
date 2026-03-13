@@ -1,11 +1,15 @@
 import { Navigate } from 'react-router-dom'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { SpacesPlanKonva } from '@/components/SpacesPlanKonva'
+import { SpaceReservationsModal } from '@/components/SpaceReservationsModal'
+import type { SpaceDetail } from '@/types/space'
+import { useState } from 'react'
 
 export function HomePage() {
   const { user, loading } = useAuth()
+  const [selectedSpace, setSelectedSpace] = useState<SpaceDetail | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
 
   if (loading) {
     return (
@@ -15,31 +19,35 @@ export function HomePage() {
     )
   }
 
-  if (user) {
-    const target = user.role.slug === 'admin' ? '/admin' : '/espaces'
-    return <Navigate to={target} replace />
-  }
-
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">CoWork'Space</h1>
-        <p className="text-muted-foreground">Réservation d’espaces de travail</p>
+        <p className="text-muted-foreground">
+          Vue plan des espaces (aujourd&apos;hui) et disponibilités par salle
+        </p>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Bienvenue</CardTitle>
-          <CardDescription>Consultez les espaces ou connectez-vous pour réserver</CardDescription>
+          <CardTitle>Plan des espaces</CardTitle>
+          <CardDescription>
+            Cliquez sur un espace pour voir ses disponibilités futures en calendrier hebdomadaire.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Link to="/espaces">
-            <Button>Voir les espaces</Button>
-          </Link>
-          <Link to="/login">
-            <Button variant="outline">Se connecter</Button>
-          </Link>
+        <CardContent>
+          <SpacesPlanKonva
+            onSelectSpace={(space) => {
+              setSelectedSpace(space)
+              setModalOpen(true)
+            }}
+          />
         </CardContent>
       </Card>
+      <SpaceReservationsModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        space={selectedSpace}
+      />
     </div>
   )
 }
