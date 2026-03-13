@@ -139,21 +139,17 @@ jobs:
 
           TIMESTAMP="$(TZ=Europe/Paris date '+%Y-%m-%d %H:%M:%S %Z')"
 
-          # Construire la description (push vs PR)
-          # Pour les PR : titre en entier + corps tronqué (max 500 car.) pour lisibilité (éviter coupure Google Chat)
+          # Construire la description (push vs PR) — contenu complet, sans troncature
+          # Nettoyage : retours à la ligne → espace, espaces multiples → un seul
           DESCRIPTION=""
           if [ "$EVENT_NAME" = "pull_request" ]; then
             PR_TITLE_CLEAN=$(printf '%s' "$PR_TITLE" | tr '\n\r' ' ' | sed 's/  */ /g' | sed 's/^ *//;s/ *$//')
-            PR_BODY_ONE_LINE=$(printf '%s' "$PR_BODY" | tr '\n\r' ' ' | sed 's/  */ /g' | sed 's/^ *//;s/ *$//')
-            PR_BODY_TRUNCATED=$(printf '%s' "$PR_BODY_ONE_LINE" | cut -c1-500)
-            DESCRIPTION="<b>Titre PR</b><br>${PR_TITLE_CLEAN}"
-            if [ -n "$PR_BODY_TRUNCATED" ]; then
-              DESCRIPTION="${DESCRIPTION}<br><br><b>Résumé</b><br>${PR_BODY_TRUNCATED}"
-              [ ${#PR_BODY_ONE_LINE} -gt 500 ] && DESCRIPTION="${DESCRIPTION}..."
-            fi
+            PR_BODY_CLEAN=$(printf '%s' "$PR_BODY" | tr '\n\r' ' ' | sed 's/  */ /g' | sed 's/^ *//;s/ *$//')
+            DESCRIPTION="PR: ${PR_TITLE_CLEAN}"
+            [ -n "$PR_BODY_CLEAN" ] && DESCRIPTION="${DESCRIPTION} ${PR_BODY_CLEAN}"
           else
             COMMIT_CLEAN=$(printf '%s' "$COMMIT_MESSAGE" | tr '\n\r' ' ' | sed 's/  */ /g' | sed 's/^ *//;s/ *$//')
-            DESCRIPTION="<b>Commit</b><br>${COMMIT_CLEAN}"
+            DESCRIPTION="Commit: ${COMMIT_CLEAN}"
           fi
 
           # Construire le détail des erreurs par job
