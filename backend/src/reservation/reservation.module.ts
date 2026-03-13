@@ -1,21 +1,23 @@
 import { Module } from '@nestjs/common';
-import { PrismaModule } from '../prisma/prisma.module';
-import { ReservationController } from './reservation.controller';
-import { ReservationRepository } from './infrastructure/reservation.repository';
-import { ListReservationsForCalendarUseCase } from './application/list-reservations-for-calendar.use-case';
+import { AuthModule } from '../auth/auth.module';
+import { ReservationController } from './interfaces/reservation.controller';
 import { CreateReservationUseCase } from './application/create-reservation.use-case';
 import { UpdateReservationUseCase } from './application/update-reservation.use-case';
 import { CancelReservationUseCase } from './application/cancel-reservation.use-case';
+import { ListReservationsUseCase } from './application/list-reservations.use-case';
+import { GetReservationByIdUseCase } from './application/get-reservation-by-id.use-case';
+import { ReservationRepository } from './infrastructure/reservation.repository';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [AuthModule],
   controllers: [ReservationController],
   providers: [
     ReservationRepository,
-    ListReservationsForCalendarUseCase,
     CreateReservationUseCase,
     UpdateReservationUseCase,
     CancelReservationUseCase,
+    ListReservationsUseCase,
+    GetReservationByIdUseCase,
   ],
 })
 export class ReservationModule {}

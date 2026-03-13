@@ -161,6 +161,7 @@ model Reservation {
   // format RRULE si récurrent (ex. FREQ=WEEKLY;BYDAY=TU;UNTIL=20240601)
   recurrenceRule  String?
   recurrenceEndAt DateTime? // jusqu’à quand ça se répète
+  recurrenceGroupId String? // identifiant de la série récurrente
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?

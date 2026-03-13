@@ -1,18 +1,10 @@
 import { describe, it, expect } from '@jest/globals';
 import { ListReservationsForCalendarUseCase } from './list-reservations-for-calendar.use-case';
-import type { IReservationRepository, ReservationCalendarItem } from '../domain/reservation.repository.interface';
-
-class InMemoryReservationRepository implements IReservationRepository {
-  constructor(private readonly items: ReservationCalendarItem[]) {}
-
-  async listForCalendar(): Promise<ReservationCalendarItem[]> {
-    return this.items;
-  }
-}
+import type { ReservationCalendarItem } from '../domain/reservation.repository.interface';
 
 describe('ListReservationsForCalendarUseCase', () => {
   it('rejette une période invalide (end <= start)', async () => {
-    const repo = new InMemoryReservationRepository([]);
+    const repo = { listForCalendar: async () => [] } as any;
     const useCase = new ListReservationsForCalendarUseCase(repo);
     const now = new Date();
     await expect(
@@ -36,7 +28,9 @@ describe('ListReservationsForCalendarUseCase', () => {
         title: 'Réunion secrète',
       },
     ];
-    const repo = new InMemoryReservationRepository(items);
+    const repo = {
+      listForCalendar: async () => items,
+    } as any;
     const useCase = new ListReservationsForCalendarUseCase(repo);
     const now = new Date();
     const result = await useCase.run({
@@ -47,5 +41,5 @@ describe('ListReservationsForCalendarUseCase', () => {
 
     expect(result[0].effectiveTitle).toBe('Occupé');
   });
-}
+});
 

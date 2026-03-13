@@ -1,38 +1,31 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { ReservationRepository } from '../infrastructure/reservation.repository';
 
-export type CancelReservationInput = {
-  reservationId: string;
-  userId: string;
-  userRole: string;
-};
+export type CancelScope = 'this' | 'all';
 
 @Injectable()
 export class CancelReservationUseCase {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly reservationRepository: ReservationRepository) {}
 
-  async run(input: CancelReservationInput) {
-    const { reservationId, userId, userRole } = input;
-
-    const existing = await this.prisma.reservation.findUnique({
-      where: { id: reservationId },
-    });
-    if (!existing || existing.deletedAt) {
-      throw new NotFoundException('Réservation introuvable');
+  async run(reservationId: string, userId: string, scope: CancelScope = 'this') {
+    const existing = await this.reservationRepository.findById(reservationId, userId);
+    if (!existing) {
+      throw new NotFoundException('Réservation introuvable.');
+    }
+    if (existing.userId !== userId) {
+      throw new ForbiddenException('Vous ne pouvez annuler que vos propres réservations.');
     }
 
-    const isOwner = existing.userId === userId;
-    const isAdmin = userRole === 'admin';
-    if (!isOwner && !isAdmin) {
-      throw new ForbiddenException('Vous ne pouvez pas annuler cette réservation');
+    let deleted: boolean | number;
+    if (scope === 'all' && existing.recurrenceGroupId) {
+      const count = await this.reservationRepository.softDeleteByRecurrenceGroupId(
+        existing.recurrenceGroupId,
+      );
+      deleted = count > 0;
+    } else {
+      deleted = await this.reservationRepository.softDelete(reservationId);
     }
-
-    return this.prisma.reservation.update({
-      where: { id: reservationId },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
+    return { success: !!deleted };
   }
 }
 

@@ -28,12 +28,6 @@ export function HomePage() {
         </p>
       </div>
       <Card>
-        <CardHeader>
-          <CardTitle>Plan des espaces</CardTitle>
-          <CardDescription>
-            Cliquez sur un espace pour voir ses disponibilités futures en calendrier hebdomadaire.
-          </CardDescription>
-        </CardHeader>
         <CardContent>
           <SpacesPlanKonva
             onSelectSpace={(space) => {

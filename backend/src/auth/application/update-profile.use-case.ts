@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { UpdateProfileDto } from '../dto/update-profile.dto';
+import { getDiceBearAvatarUrl } from './avatar.utils';
 
 @Injectable()
 export class UpdateProfileUseCase {
@@ -26,11 +27,15 @@ export class UpdateProfileUseCase {
         firstname: true,
         lastname: true,
         phone: true,
+        avatarUrl: true,
         role: { select: { slug: true } },
       },
     });
 
-    return updated;
+    return {
+      ...updated,
+      avatarUrl: updated.avatarUrl ?? getDiceBearAvatarUrl(updated.id),
+    };
   }
 }
 

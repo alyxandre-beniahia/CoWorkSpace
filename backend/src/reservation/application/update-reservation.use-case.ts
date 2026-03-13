@@ -1,66 +1,52 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-
-export type UpdateReservationInput = {
-  reservationId: string;
-  userId: string;
-  userRole: string;
-  startDatetime?: Date;
-  endDatetime?: Date;
-  title?: string | null;
-  isPrivate?: boolean;
-};
+import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { ReservationRepository } from '../infrastructure/reservation.repository';
+import type { UpdateReservationInput } from '../domain/reservation.entity';
+import type { UpdateReservationDto } from './dto/update-reservation.dto';
 
 @Injectable()
 export class UpdateReservationUseCase {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly reservationRepository: ReservationRepository) {}
 
-  async run(input: UpdateReservationInput) {
-    const { reservationId, userId, userRole, startDatetime, endDatetime, title, isPrivate } = input;
-
-    const existing = await this.prisma.reservation.findUnique({
-      where: { id: reservationId },
-    });
-    if (!existing || existing.deletedAt) {
-      throw new NotFoundException('Réservation introuvable');
+  async run(reservationId: string, userId: string, dto: UpdateReservationDto) {
+    const input: UpdateReservationInput = {
+      ...(dto.startDatetime && { startDatetime: new Date(dto.startDatetime) }),
+      ...(dto.endDatetime && { endDatetime: new Date(dto.endDatetime) }),
+      ...(dto.title !== undefined && { title: dto.title }),
+      ...(dto.isPrivate !== undefined && { isPrivate: dto.isPrivate }),
+      ...(dto.recurrenceRule !== undefined && { recurrenceRule: dto.recurrenceRule }),
+      ...(dto.recurrenceEndAt !== undefined && {
+        recurrenceEndAt: dto.recurrenceEndAt ? new Date(dto.recurrenceEndAt) : null,
+      }),
+    };
+    const existing = await this.reservationRepository.findById(reservationId, userId);
+    if (!existing) {
+      throw new NotFoundException('Réservation introuvable.');
+    }
+    if (existing.userId !== userId) {
+      throw new ForbiddenException('Vous ne pouvez modifier que vos propres réservations.');
     }
 
-    const isOwner = existing.userId === userId;
-    const isAdmin = userRole === 'admin';
-    if (!isOwner && !isAdmin) {
-      throw new ForbiddenException('Vous ne pouvez pas modifier cette réservation');
+    const start = input.startDatetime ?? existing.startDatetime;
+    const end = input.endDatetime ?? existing.endDatetime;
+
+    if (end <= start) {
+      throw new ConflictException('La date de fin doit être après la date de début.');
     }
 
-    const newStart = startDatetime ?? existing.startDatetime;
-    const newEnd = endDatetime ?? existing.endDatetime;
+    const hasOverlap = await this.reservationRepository.hasOverlap(
+      existing.spaceId,
+      start,
+      end,
+      reservationId,
+    );
 
-    if (newEnd <= newStart) {
-      throw new BadRequestException('La date de fin doit être postérieure à la date de début');
+    if (hasOverlap) {
+      throw new ConflictException('Ce créneau chevauche une réservation existante.');
     }
 
-    const overlapping = await this.prisma.reservation.findFirst({
-      where: {
-        spaceId: existing.spaceId,
-        deletedAt: null,
-        id: { not: reservationId },
-        startDatetime: { lt: newEnd },
-        endDatetime: { gt: newStart },
-      },
-    });
+    const updated = await this.reservationRepository.update(reservationId, input);
 
-    if (overlapping) {
-      throw new BadRequestException('Le créneau sélectionné est déjà réservé');
-    }
-
-    return this.prisma.reservation.update({
-      where: { id: reservationId },
-      data: {
-        startDatetime: newStart,
-        endDatetime: newEnd,
-        ...(title !== undefined && { title }),
-        ...(isPrivate !== undefined && { isPrivate }),
-      },
-    });
+    return updated;
   }
 }
 
