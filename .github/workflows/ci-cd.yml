@@ -140,16 +140,21 @@ jobs:
           TIMESTAMP="$(TZ=Europe/Paris date '+%Y-%m-%d %H:%M:%S %Z')"
 
           # Construire la description (push vs PR)
+          # Pour les PR : titre en entier + corps tronqué (max 500 car.) pour lisibilité (éviter coupure Google Chat)
           DESCRIPTION=""
           if [ "$EVENT_NAME" = "pull_request" ]; then
-            DESCRIPTION="PR: ${PR_TITLE}"
-            if [ -n "$PR_BODY" ]; then
-              DESCRIPTION="$DESCRIPTION - ${PR_BODY}"
+            PR_TITLE_CLEAN=$(printf '%s' "$PR_TITLE" | tr '\n\r' ' ' | sed 's/  */ /g' | sed 's/^ *//;s/ *$//')
+            PR_BODY_ONE_LINE=$(printf '%s' "$PR_BODY" | tr '\n\r' ' ' | sed 's/  */ /g' | sed 's/^ *//;s/ *$//')
+            PR_BODY_TRUNCATED=$(printf '%s' "$PR_BODY_ONE_LINE" | cut -c1-500)
+            DESCRIPTION="<b>Titre PR</b><br>${PR_TITLE_CLEAN}"
+            if [ -n "$PR_BODY_TRUNCATED" ]; then
+              DESCRIPTION="${DESCRIPTION}<br><br><b>Résumé</b><br>${PR_BODY_TRUNCATED}"
+              [ ${#PR_BODY_ONE_LINE} -gt 500 ] && DESCRIPTION="${DESCRIPTION}..."
             fi
           else
-            DESCRIPTION="Commit: ${COMMIT_MESSAGE}"
+            COMMIT_CLEAN=$(printf '%s' "$COMMIT_MESSAGE" | tr '\n\r' ' ' | sed 's/  */ /g' | sed 's/^ *//;s/ *$//')
+            DESCRIPTION="<b>Commit</b><br>${COMMIT_CLEAN}"
           fi
-          DESCRIPTION=$(echo "$DESCRIPTION" | tr '\n' ' ')
 
           # Construire le détail des erreurs par job
           ERROR_DETAILS=""
@@ -200,7 +205,7 @@ jobs:
                     {
                       header: "Description",
                       widgets: [
-                        { textParagraph: { text: ("<b>Résumé</b><br>" + $description) } },
+                        { textParagraph: { text: $description } },
                         { textParagraph: { text: ("<b>Erreurs</b><br>" + $error_details) } }
                       ]
                     }
