@@ -1,22 +1,21 @@
-import { Navigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { SpacesPlanKonva } from '@/components/SpacesPlanKonva'
-import { SpaceReservationsModal } from '@/components/SpaceReservationsModal'
-import type { SpaceDetail } from '@/types/space'
-import { useState } from 'react'
+import { useAuth } from "@/contexts/AuthContext";
+import { Card, CardContent } from "@/components/ui/card";
+import { SpacesPlanKonva } from "@/components/SpacesPlanKonva";
+import { SpaceReservationsModal } from "@/components/SpaceReservationsModal";
+import type { SpaceDetail } from "@/types/space";
+import { useState } from "react";
 
 export function HomePage() {
-  const { user, loading } = useAuth()
-  const [selectedSpace, setSelectedSpace] = useState<SpaceDetail | null>(null)
-  const [modalOpen, setModalOpen] = useState(false)
+  const { loading } = useAuth();
+  const [selectedSpace, setSelectedSpace] = useState<SpaceDetail | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <p className="text-muted-foreground">Chargement…</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -31,8 +30,8 @@ export function HomePage() {
         <CardContent>
           <SpacesPlanKonva
             onSelectSpace={(space) => {
-              setSelectedSpace(space)
-              setModalOpen(true)
+              setSelectedSpace(space);
+              setModalOpen(true);
             }}
           />
         </CardContent>
@@ -43,5 +42,5 @@ export function HomePage() {
         space={selectedSpace}
       />
     </div>
-  )
+  );
 }

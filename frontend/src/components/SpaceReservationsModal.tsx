@@ -1,78 +1,97 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { EventInput } from '@fullcalendar/core'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Calendar } from '@/components/ui/calendar'
-import { ReservationCalendar, type CalendarSlot } from '@/components/ReservationCalendar'
-import { api } from '@/lib/api'
-import type { SpaceDetail } from '@/types/space'
-import { getWeekRange, toIsoString } from '@/lib/date'
-import { useAuth } from '@/contexts/AuthContext'
-import { toast } from 'sonner'
+import { useEffect, useMemo, useState } from "react";
+import type { EventInput } from "@fullcalendar/core";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  ReservationCalendar,
+  type CalendarSlot,
+} from "@/components/ReservationCalendar";
+import { api } from "@/lib/api";
+import type { SpaceDetail } from "@/types/space";
+import { getWeekRange, toIsoString } from "@/lib/date";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 export type ReservationCalendarItem = {
-  id: string
-  spaceId: string
-  userId: string
-  startDatetime: string
-  endDatetime: string
-  isPrivate: boolean
-  title: string | null
-  effectiveTitle: string | null
-  isOwner: boolean
-}
+  id: string;
+  spaceId: string;
+  userId: string;
+  startDatetime: string;
+  endDatetime: string;
+  isPrivate: boolean;
+  title: string | null;
+  effectiveTitle: string | null;
+  isOwner: boolean;
+};
 
 type HourSlot = {
-  start: Date
-  end: Date
-  isBusy: boolean
-}
+  start: Date;
+  end: Date;
+  isBusy: boolean;
+};
 
 type SelectedReservation = {
-  id: string
-  start: Date
-  end: Date
-}
+  id: string;
+  start: Date;
+  end: Date;
+};
 
 type SpaceReservationsModalProps = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  space: SpaceDetail | null
-}
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  space: SpaceDetail | null;
+};
 
-export function SpaceReservationsModal({ open, onOpenChange, space }: SpaceReservationsModalProps) {
-  const { token, user } = useAuth()
-  const [events, setEvents] = useState<EventInput[]>([])
-  const [reservations, setReservations] = useState<ReservationCalendarItem[]>([])
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => getWeekRange(new Date()).start)
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  const [selectedSlot, setSelectedSlot] = useState<CalendarSlot | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const [selectedReservation, setSelectedReservation] = useState<SelectedReservation | null>(null)
+export function SpaceReservationsModal({
+  open,
+  onOpenChange,
+  space,
+}: SpaceReservationsModalProps) {
+  const { token, user } = useAuth();
+  const [events, setEvents] = useState<EventInput[]>([]);
+  const [reservations, setReservations] = useState<ReservationCalendarItem[]>(
+    [],
+  );
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(
+    () => getWeekRange(new Date()).start,
+  );
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedSlot, setSelectedSlot] = useState<CalendarSlot | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [selectedReservation, setSelectedReservation] =
+    useState<SelectedReservation | null>(null);
 
   useEffect(() => {
     if (!open || !space || !token) {
-      setEvents([])
-      setReservations([])
-      setSelectedSlot(null)
-      setSelectedReservation(null)
-      return
+      setEvents([]);
+      setReservations([]);
+      setSelectedSlot(null);
+      setSelectedReservation(null);
+      return;
     }
-    const { start, end } = getWeekRange(currentWeekStart)
+    const { start, end } = getWeekRange(currentWeekStart);
     const params = new URLSearchParams({
       spaceId: space.id,
       start: toIsoString(start),
       end: toIsoString(end),
+    });
+    api<ReservationCalendarItem[]>(`/reservations?${params.toString()}`, {
+      token,
     })
-    api<ReservationCalendarItem[]>(`/reservations?${params.toString()}`, { token })
       .then((items) => {
-        setReservations(items)
+        setReservations(items);
         const mapped: EventInput[] = items
           .map((item) => {
-            const isOwner = item.isOwner
-            const canEdit = isOwner || user?.role.slug === 'admin'
+            const isOwner = item.isOwner;
+            const canEdit = isOwner || user?.role.slug === "admin";
 
             // Pour un autre membre non-admin : évènement de fond rouge semi-transparent
             if (!canEdit && !isOwner) {
@@ -80,24 +99,26 @@ export function SpaceReservationsModal({ open, onOpenChange, space }: SpaceReser
                 id: `bg-${item.id}`,
                 start: item.startDatetime,
                 end: item.endDatetime,
-                display: 'background',
+                display: "background",
                 // Rouge plein pour bien signaler un créneau bloqué
-                backgroundColor: 'rgba(220, 38, 38, 1)',
-              }
+                backgroundColor: "rgba(220, 38, 38, 1)",
+              };
             }
 
-            const backgroundColor = isOwner ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'
-            const borderColor = backgroundColor
+            const backgroundColor = isOwner
+              ? "hsl(var(--primary))"
+              : "hsl(var(--destructive))";
+            const borderColor = backgroundColor;
             const textColor = isOwner
-              ? 'hsl(var(--primary-foreground))'
-              : 'hsl(var(--destructive-foreground))'
+              ? "hsl(var(--primary-foreground))"
+              : "hsl(var(--destructive-foreground))";
 
             return {
               id: item.id,
-              title: item.effectiveTitle ?? 'Réservation',
+              title: item.effectiveTitle ?? "Réservation",
               start: item.startDatetime,
               end: item.endDatetime,
-              display: 'block',
+              display: "block",
               backgroundColor,
               borderColor,
               textColor,
@@ -106,63 +127,75 @@ export function SpaceReservationsModal({ open, onOpenChange, space }: SpaceReser
                 isOwner,
                 canEdit,
               },
-            }
+            };
           })
-          .filter((e): e is EventInput => e !== null)
-        setEvents(mapped)
+          .filter((e) => e != null) as EventInput[];
+        setEvents(mapped);
       })
       .catch(() => {
-        setEvents([])
-      })
-  }, [open, space, token, currentWeekStart])
+        setEvents([]);
+      });
+  }, [open, space, token, currentWeekStart]);
 
   useEffect(() => {
     if (!open) {
-      setSelectedSlot(null)
-      setSelectedDate(new Date())
-      setSelectedReservation(null)
+      setSelectedSlot(null);
+      setSelectedDate(new Date());
+      setSelectedReservation(null);
     }
-  }, [open])
+  }, [open]);
 
   const daySlots: HourSlot[] = useMemo(() => {
-    const baseDate = selectedDate
-    const slots: HourSlot[] = []
+    const baseDate = selectedDate;
+    const slots: HourSlot[] = [];
     // créneaux d'1h de 08h à 20h (exclu)
     for (let hour = 8; hour < 20; hour++) {
-      const start = new Date(baseDate)
-      start.setHours(hour, 0, 0, 0)
-      const end = new Date(baseDate)
-      end.setHours(hour + 1, 0, 0, 0)
+      const start = new Date(baseDate);
+      start.setHours(hour, 0, 0, 0);
+      const end = new Date(baseDate);
+      end.setHours(hour + 1, 0, 0, 0);
       const isBusy = reservations.some((r) => {
-        const evStart = new Date(r.startDatetime)
-        const evEnd = new Date(r.endDatetime)
-        return evStart < end && evEnd > start
-      })
-      slots.push({ start, end, isBusy })
+        const evStart = new Date(r.startDatetime);
+        const evEnd = new Date(r.endDatetime);
+        return evStart < end && evEnd > start;
+      });
+      slots.push({ start, end, isBusy });
     }
-    return slots
-  }, [reservations, selectedDate])
+    return slots;
+  }, [reservations, selectedDate]);
 
   const { badgeLabel, badgeVariant } = useMemo(() => {
     if (daySlots.length === 0) {
-      return { badgeLabel: 'Disponible ce jour', badgeVariant: 'default' as const }
+      return {
+        badgeLabel: "Disponible ce jour",
+        badgeVariant: "default" as const,
+      };
     }
-    const busyCount = daySlots.filter((s) => s.isBusy).length
+    const busyCount = daySlots.filter((s) => s.isBusy).length;
     if (busyCount === 0) {
-      return { badgeLabel: 'Disponible ce jour', badgeVariant: 'default' as const }
+      return {
+        badgeLabel: "Disponible ce jour",
+        badgeVariant: "default" as const,
+      };
     }
     if (busyCount === daySlots.length) {
-      return { badgeLabel: 'Occupée ce jour', badgeVariant: 'destructive' as const }
+      return {
+        badgeLabel: "Occupée ce jour",
+        badgeVariant: "destructive" as const,
+      };
     }
-    return { badgeLabel: 'Partiellement occupée ce jour', badgeVariant: 'secondary' as const }
-  }, [daySlots])
+    return {
+      badgeLabel: "Partiellement occupée ce jour",
+      badgeVariant: "secondary" as const,
+    };
+  }, [daySlots]);
 
   async function handleCreateReservation() {
-    if (!space || !token || !selectedSlot) return
-    setSubmitting(true)
+    if (!space || !token || !selectedSlot) return;
+    setSubmitting(true);
     try {
-      await api('/reservations', {
-        method: 'POST',
+      await api("/reservations", {
+        method: "POST",
         token,
         body: JSON.stringify({
           spaceId: space.id,
@@ -171,46 +204,51 @@ export function SpaceReservationsModal({ open, onOpenChange, space }: SpaceReser
           title: null,
           isPrivate: false,
         }),
-      })
-      toast.success('Créneau réservé')
+      });
+      toast.success("Créneau réservé");
       // Rafraîchir les réservations pour mettre à jour le calendrier
-      const { start, end } = getWeekRange(currentWeekStart)
+      const { start, end } = getWeekRange(currentWeekStart);
       const params = new URLSearchParams({
         spaceId: space.id,
         start: toIsoString(start),
         end: toIsoString(end),
-      })
-      const items = await api<ReservationCalendarItem[]>(`/reservations?${params.toString()}`, {
-        token,
-      })
-      setReservations(items)
+      });
+      const items = await api<ReservationCalendarItem[]>(
+        `/reservations?${params.toString()}`,
+        {
+          token,
+        },
+      );
+      setReservations(items);
       const mapped: EventInput[] = items
         .map((item) => {
-          const isOwner = item.isOwner
-          const canEdit = isOwner || user?.role.slug === 'admin'
+          const isOwner = item.isOwner;
+          const canEdit = isOwner || user?.role.slug === "admin";
 
           if (!canEdit && !isOwner) {
             return {
               id: `bg-${item.id}`,
               start: item.startDatetime,
               end: item.endDatetime,
-              display: 'background',
-              backgroundColor: 'rgba(220, 38, 38, 1)',
-            }
+              display: "background",
+              backgroundColor: "rgba(220, 38, 38, 1)",
+            };
           }
 
-          const backgroundColor = isOwner ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'
-          const borderColor = backgroundColor
+          const backgroundColor = isOwner
+            ? "hsl(var(--primary))"
+            : "hsl(var(--destructive))";
+          const borderColor = backgroundColor;
           const textColor = isOwner
-            ? 'hsl(var(--primary-foreground))'
-            : 'hsl(var(--destructive-foreground))'
+            ? "hsl(var(--primary-foreground))"
+            : "hsl(var(--destructive-foreground))";
 
           return {
             id: item.id,
-            title: item.effectiveTitle ?? 'Réservation',
+            title: item.effectiveTitle ?? "Réservation",
             start: item.startDatetime,
             end: item.endDatetime,
-            display: 'block',
+            display: "block",
             backgroundColor,
             borderColor,
             textColor,
@@ -219,68 +257,75 @@ export function SpaceReservationsModal({ open, onOpenChange, space }: SpaceReser
               isOwner,
               canEdit,
             },
-          }
+          };
         })
-        .filter((e): e is EventInput => e !== null)
-      setEvents(mapped)
-      setSelectedSlot(null)
+        .filter((e) => e != null) as EventInput[];
+      setEvents(mapped);
+      setSelectedSlot(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Impossible de créer la réservation')
+      toast.error(
+        e instanceof Error ? e.message : "Impossible de créer la réservation",
+      );
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
 
   async function handleUpdateReservation() {
-    if (!space || !token || !selectedReservation) return
-    setSubmitting(true)
+    if (!space || !token || !selectedReservation) return;
+    setSubmitting(true);
     try {
       await api(`/reservations/${selectedReservation.id}`, {
-        method: 'PATCH',
+        method: "PATCH",
         token,
         body: JSON.stringify({
           startDatetime: selectedReservation.start.toISOString(),
           endDatetime: selectedReservation.end.toISOString(),
         }),
-      })
-      toast.success('Réservation mise à jour')
-      const { start, end } = getWeekRange(currentWeekStart)
+      });
+      toast.success("Réservation mise à jour");
+      const { start, end } = getWeekRange(currentWeekStart);
       const params = new URLSearchParams({
         spaceId: space.id,
         start: toIsoString(start),
         end: toIsoString(end),
-      })
-      const items = await api<ReservationCalendarItem[]>(`/reservations?${params.toString()}`, {
-        token,
-      })
-      setReservations(items)
+      });
+      const items = await api<ReservationCalendarItem[]>(
+        `/reservations?${params.toString()}`,
+        {
+          token,
+        },
+      );
+      setReservations(items);
       const mapped: EventInput[] = items
         .map((item) => {
-          const isOwner = item.isOwner
-          const canEdit = isOwner || user?.role.slug === 'admin'
+          const isOwner = item.isOwner;
+          const canEdit = isOwner || user?.role.slug === "admin";
 
           if (!canEdit && !isOwner) {
             return {
               id: `bg-${item.id}`,
               start: item.startDatetime,
               end: item.endDatetime,
-              display: 'background',
-              backgroundColor: 'rgba(220, 38, 38, 1)',
-            }
+              display: "background",
+              backgroundColor: "rgba(220, 38, 38, 1)",
+            };
           }
 
-          const backgroundColor = isOwner ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'
-          const borderColor = backgroundColor
+          const backgroundColor = isOwner
+            ? "hsl(var(--primary))"
+            : "hsl(var(--destructive))";
+          const borderColor = backgroundColor;
           const textColor = isOwner
-            ? 'hsl(var(--primary-foreground))'
-            : 'hsl(var(--destructive-foreground))'
+            ? "hsl(var(--primary-foreground))"
+            : "hsl(var(--destructive-foreground))";
 
           return {
             id: item.id,
-            title: item.effectiveTitle ?? 'Réservation',
+            title: item.effectiveTitle ?? "Réservation",
             start: item.startDatetime,
             end: item.endDatetime,
-            display: 'block',
+            display: "block",
             backgroundColor,
             borderColor,
             textColor,
@@ -289,65 +334,74 @@ export function SpaceReservationsModal({ open, onOpenChange, space }: SpaceReser
               isOwner,
               canEdit,
             },
-          }
+          };
         })
-        .filter((e): e is EventInput => e !== null)
-      setEvents(mapped)
-      setSelectedReservation(null)
+        .filter((e) => e != null) as EventInput[];
+      setEvents(mapped);
+      setSelectedReservation(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Impossible de modifier la réservation')
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : "Impossible de modifier la réservation",
+      );
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
 
   async function handleCancelReservation() {
-    if (!space || !token || !selectedReservation) return
-    if (!window.confirm('Annuler cette réservation ?')) return
-    setSubmitting(true)
+    if (!space || !token || !selectedReservation) return;
+    if (!window.confirm("Annuler cette réservation ?")) return;
+    setSubmitting(true);
     try {
       await api(`/reservations/${selectedReservation.id}`, {
-        method: 'DELETE',
+        method: "DELETE",
         token,
-      })
-      toast.success('Réservation annulée')
-      const { start, end } = getWeekRange(currentWeekStart)
+      });
+      toast.success("Réservation annulée");
+      const { start, end } = getWeekRange(currentWeekStart);
       const params = new URLSearchParams({
         spaceId: space.id,
         start: toIsoString(start),
         end: toIsoString(end),
-      })
-      const items = await api<ReservationCalendarItem[]>(`/reservations?${params.toString()}`, {
-        token,
-      })
-      setReservations(items)
+      });
+      const items = await api<ReservationCalendarItem[]>(
+        `/reservations?${params.toString()}`,
+        {
+          token,
+        },
+      );
+      setReservations(items);
       const mapped: EventInput[] = items
         .map((item) => {
-          const isOwner = item.isOwner
-          const canEdit = isOwner || user?.role.slug === 'admin'
+          const isOwner = item.isOwner;
+          const canEdit = isOwner || user?.role.slug === "admin";
 
           if (!canEdit && !isOwner) {
             return {
               id: `bg-${item.id}`,
               start: item.startDatetime,
               end: item.endDatetime,
-              display: 'background',
-              backgroundColor: 'rgba(220, 38, 38, 1)',
-            }
+              display: "background",
+              backgroundColor: "rgba(220, 38, 38, 1)",
+            };
           }
 
-          const backgroundColor = isOwner ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'
-          const borderColor = backgroundColor
+          const backgroundColor = isOwner
+            ? "hsl(var(--primary))"
+            : "hsl(var(--destructive))";
+          const borderColor = backgroundColor;
           const textColor = isOwner
-            ? 'hsl(var(--primary-foreground))'
-            : 'hsl(var(--destructive-foreground))'
+            ? "hsl(var(--primary-foreground))"
+            : "hsl(var(--destructive-foreground))";
 
           return {
             id: item.id,
-            title: item.effectiveTitle ?? 'Réservation',
+            title: item.effectiveTitle ?? "Réservation",
             start: item.startDatetime,
             end: item.endDatetime,
-            display: 'block',
+            display: "block",
             backgroundColor,
             borderColor,
             textColor,
@@ -356,19 +410,21 @@ export function SpaceReservationsModal({ open, onOpenChange, space }: SpaceReser
               isOwner,
               canEdit,
             },
-          }
+          };
         })
-        .filter((e): e is EventInput => e !== null)
-      setEvents(mapped)
-      setSelectedReservation(null)
+        .filter((e) => e != null) as EventInput[];
+      setEvents(mapped);
+      setSelectedReservation(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Impossible d\'annuler la réservation')
+      toast.error(
+        e instanceof Error ? e.message : "Impossible d'annuler la réservation",
+      );
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
 
-  if (!space) return null
+  if (!space) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -392,9 +448,13 @@ export function SpaceReservationsModal({ open, onOpenChange, space }: SpaceReser
           <div className="grid gap-6 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.9fr)]">
             <div className="space-y-3 text-sm text-muted-foreground">
               <div>
-                <p className="font-medium text-foreground">Détails de la salle</p>
+                <p className="font-medium text-foreground">
+                  Détails de la salle
+                </p>
                 <p>Capacité : {space.capacity} place(s)</p>
-                {space.description && <p className="mt-1">{space.description}</p>}
+                {space.description && (
+                  <p className="mt-1">{space.description}</p>
+                )}
               </div>
               {space.equipements.length > 0 && (
                 <div className="space-y-1">
@@ -414,10 +474,10 @@ export function SpaceReservationsModal({ open, onOpenChange, space }: SpaceReser
                   mode="single"
                   selected={selectedDate}
                   onSelect={(d) => {
-                    if (!d) return
-                    setSelectedDate(d)
-                    const { start } = getWeekRange(d)
-                    setCurrentWeekStart(start)
+                    if (!d) return;
+                    setSelectedDate(d);
+                    const { start } = getWeekRange(d);
+                    setCurrentWeekStart(start);
                   }}
                   className="border rounded-lg"
                 />
@@ -433,7 +493,9 @@ export function SpaceReservationsModal({ open, onOpenChange, space }: SpaceReser
                 <TabsContent value="week">
                   <div className="space-y-1 mb-2 text-sm">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium">Calendrier des disponibilités (semaine)</span>
+                      <span className="font-medium">
+                        Calendrier des disponibilités (semaine)
+                      </span>
                       <span className="text-muted-foreground">
                         Cliquez-glissez pour sélectionner un créneau libre
                       </span>
@@ -457,28 +519,30 @@ export function SpaceReservationsModal({ open, onOpenChange, space }: SpaceReser
                     onSelectSlot={(slot) => {
                       // Empêche de sélectionner un créneau qui chevauche une réservation existante
                       const overlapsBusy = reservations.some((r) => {
-                        const start = new Date(r.startDatetime)
-                        const end = new Date(r.endDatetime)
-                        return start < slot.end && end > slot.start
-                      })
+                        const start = new Date(r.startDatetime);
+                        const end = new Date(r.endDatetime);
+                        return start < slot.end && end > slot.start;
+                      });
                       if (overlapsBusy) {
-                        toast.error('Ce créneau est déjà réservé')
-                        return
+                        toast.error("Ce créneau est déjà réservé");
+                        return;
                       }
-                      setSelectedSlot(slot)
-                      setSelectedReservation(null)
+                      setSelectedSlot(slot);
+                      setSelectedReservation(null);
                     }}
                     onEventClick={({ id, start, end, canEdit }) => {
                       if (!canEdit) {
-                        toast.error("Vous ne pouvez pas modifier cette réservation")
-                        return
+                        toast.error(
+                          "Vous ne pouvez pas modifier cette réservation",
+                        );
+                        return;
                       }
-                      setSelectedReservation({ id, start, end })
-                      setSelectedSlot(null)
+                      setSelectedReservation({ id, start, end });
+                      setSelectedSlot(null);
                     }}
                     onEventChange={({ id, start, end }) => {
-                      setSelectedReservation({ id, start, end })
-                      setSelectedSlot(null)
+                      setSelectedReservation({ id, start, end });
+                      setSelectedSlot(null);
                     }}
                   />
                 </TabsContent>
@@ -486,8 +550,8 @@ export function SpaceReservationsModal({ open, onOpenChange, space }: SpaceReser
                   <div className="space-y-2 text-sm">
                     <p className="font-medium">Vue jour (récapitulatif)</p>
                     <p className="text-muted-foreground">
-                      La vue jour détaillée pourra lister ici les créneaux occupés et libres pour la
-                      date sélectionnée.
+                      La vue jour détaillée pourra lister ici les créneaux
+                      occupés et libres pour la date sélectionnée.
                     </p>
                   </div>
                 </TabsContent>
@@ -498,25 +562,28 @@ export function SpaceReservationsModal({ open, onOpenChange, space }: SpaceReser
           <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm">
             <div className="flex items-center justify-between gap-2">
               <div className="flex flex-col">
-                <span className="font-medium text-foreground">Créneau sélectionné</span>
+                <span className="font-medium text-foreground">
+                  Créneau sélectionné
+                </span>
                 {selectedSlot ? (
                   <span className="text-muted-foreground">
-                    {selectedSlot.start.toLocaleString('fr-FR', {
-                      weekday: 'short',
-                      day: '2-digit',
-                      month: 'short',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}{' '}
-                    →{' '}
-                    {selectedSlot.end.toLocaleTimeString('fr-FR', {
-                      hour: '2-digit',
-                      minute: '2-digit',
+                    {selectedSlot.start.toLocaleString("fr-FR", {
+                      weekday: "short",
+                      day: "2-digit",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}{" "}
+                    →{" "}
+                    {selectedSlot.end.toLocaleTimeString("fr-FR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
                     })}
                   </span>
                 ) : (
                   <span className="text-muted-foreground">
-                    Sélectionnez un créneau libre dans le calendrier pour le réserver.
+                    Sélectionnez un créneau libre dans le calendrier pour le
+                    réserver.
                   </span>
                 )}
               </div>
@@ -525,7 +592,7 @@ export function SpaceReservationsModal({ open, onOpenChange, space }: SpaceReser
                 disabled={!selectedSlot || submitting}
                 onClick={handleCreateReservation}
               >
-                {submitting ? 'Réservation…' : 'Réserver ce créneau'}
+                {submitting ? "Réservation…" : "Réserver ce créneau"}
               </Button>
             </div>
           </div>
@@ -533,26 +600,28 @@ export function SpaceReservationsModal({ open, onOpenChange, space }: SpaceReser
           <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm">
             <div className="flex items-center justify-between gap-2">
               <div className="flex flex-col">
-                <span className="font-medium text-foreground">Réservation sélectionnée</span>
+                <span className="font-medium text-foreground">
+                  Réservation sélectionnée
+                </span>
                 {selectedReservation ? (
                   <span className="text-muted-foreground">
-                    {selectedReservation.start.toLocaleString('fr-FR', {
-                      weekday: 'short',
-                      day: '2-digit',
-                      month: 'short',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}{' '}
-                    →{' '}
-                    {selectedReservation.end.toLocaleTimeString('fr-FR', {
-                      hour: '2-digit',
-                      minute: '2-digit',
+                    {selectedReservation.start.toLocaleString("fr-FR", {
+                      weekday: "short",
+                      day: "2-digit",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}{" "}
+                    →{" "}
+                    {selectedReservation.end.toLocaleTimeString("fr-FR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
                     })}
                   </span>
                 ) : (
                   <span className="text-muted-foreground">
-                    Cliquez sur une réservation ou déplacez-la dans le calendrier pour la modifier
-                    ou l&apos;annuler.
+                    Cliquez sur une réservation ou déplacez-la dans le
+                    calendrier pour la modifier ou l&apos;annuler.
                   </span>
                 )}
               </div>
@@ -570,7 +639,9 @@ export function SpaceReservationsModal({ open, onOpenChange, space }: SpaceReser
                   disabled={!selectedReservation || submitting}
                   onClick={handleUpdateReservation}
                 >
-                  {submitting ? 'Enregistrement…' : 'Enregistrer les modifications'}
+                  {submitting
+                    ? "Enregistrement…"
+                    : "Enregistrer les modifications"}
                 </Button>
               </div>
             </div>
@@ -578,6 +649,5 @@ export function SpaceReservationsModal({ open, onOpenChange, space }: SpaceReser
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
-
