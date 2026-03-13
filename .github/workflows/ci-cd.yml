@@ -120,7 +120,7 @@ jobs:
       GOOGLE_CHAT_WEBHOOK: ${{ secrets.GOOGLE_CHAT_WEBHOOK }}
       OVERALL_STATUS: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && 'Échec' || 'Succès' }}
       REPO_URL: ${{ github.event.repository.html_url }}
-      BRANCH_NAME: ${{ github.ref_name }}
+      BRANCH_NAME: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
       ACTOR: ${{ github.actor }}
       EVENT_NAME: ${{ github.event_name }}
       COMMIT_MESSAGE: ${{ github.event.head_commit.message || '' }}
