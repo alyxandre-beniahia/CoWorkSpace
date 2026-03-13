@@ -52,6 +52,7 @@ describe('UpdateProfileUseCase', () => {
       lastname: 'NewLast',
       phone: '0600000000',
     });
+    expect(result).toHaveProperty('avatarUrl');
   });
 
   it('lance NotFoundException si utilisateur introuvable', async () => {

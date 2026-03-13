@@ -16,6 +16,7 @@ export type User = {
   firstname: string;
   lastname: string;
   phone?: string | null;
+  avatarUrl?: string | null;
   role: { slug: string };
 };
 
