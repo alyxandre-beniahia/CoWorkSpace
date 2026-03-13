@@ -10,6 +10,7 @@ import { VerifyEmailUseCase } from './application/verify-email.use-case';
 import { UpdateProfileUseCase } from './application/update-profile.use-case';
 import { RequestPasswordResetUseCase } from './application/request-password-reset.use-case';
 import { ResetPasswordUseCase } from './application/reset-password.use-case';
+import { ChangePasswordUseCase } from './application/change-password.use-case';
 import { JwtStrategy } from './infrastructure/jwt.strategy';
 import { AdminGuard } from './infrastructure/admin.guard';
 import { NotificationModule } from '../notification/notification.module';
@@ -34,6 +35,7 @@ import { NotificationModule } from '../notification/notification.module';
     UpdateProfileUseCase,
     RequestPasswordResetUseCase,
     ResetPasswordUseCase,
+    ChangePasswordUseCase,
     JwtStrategy,
   ],
   exports: [JwtModule, JwtAuthGuard, AdminGuard],

@@ -13,10 +13,12 @@ import { VerifyEmailUseCase } from './application/verify-email.use-case';
 import { UpdateProfileUseCase } from './application/update-profile.use-case';
 import { RequestPasswordResetUseCase } from './application/request-password-reset.use-case';
 import { ResetPasswordUseCase } from './application/reset-password.use-case';
+import { ChangePasswordUseCase } from './application/change-password.use-case';
 import { RegisterDto } from './dto/register.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 type AuthRequest = ExpressRequest & { user: { userId: string; email: string; role: string } };
 
@@ -30,6 +32,7 @@ export class AuthController {
     private readonly updateProfileUseCase: UpdateProfileUseCase,
     private readonly requestPasswordResetUseCase: RequestPasswordResetUseCase,
     private readonly resetPasswordUseCase: ResetPasswordUseCase,
+    private readonly changePasswordUseCase: ChangePasswordUseCase,
   ) {}
 
   // ——— Session : login et profil courant
@@ -60,6 +63,12 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async updateProfile(@Request() req: AuthRequest, @Body() dto: UpdateProfileDto) {
     return this.updateProfileUseCase.run(req.user.userId, dto);
+  }
+
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  async changePassword(@Request() req: AuthRequest, @Body() dto: ChangePasswordDto) {
+    return this.changePasswordUseCase.run(req.user.userId, dto);
   }
 
   @Post('forgot-password')

@@ -39,6 +39,8 @@ describe('GetMeUseCase', () => {
       role: { slug: 'admin' },
     });
     expect(result).toHaveProperty('phone');
+    expect(result).toHaveProperty('avatarUrl');
+    expect(result.avatarUrl).toMatch(/^https:\/\/api\.dicebear\.com\/9\.x\/.+\/svg\?seed=/);
   });
 
   it('lance NotFoundException si utilisateur non trouvé', async () => {
