@@ -1,17 +1,17 @@
-import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
-import type { ReservationListFilters } from '../domain/reservation-list.filters';
+import { Injectable } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
+import { PrismaService } from "../../prisma/prisma.service";
+import type { ReservationListFilters } from "../domain/reservation-list.filters";
 import type {
   IReservationRepository,
   ReservationCalendarItem,
-} from '../domain/reservation.repository.interface';
+} from "../domain/reservation.repository.interface";
 import type {
   ReservationListItem,
   ReservationWithDetails,
   CreateReservationInput,
   UpdateReservationInput,
-} from '../domain/reservation.entity';
+} from "../domain/reservation.entity";
 
 @Injectable()
 export class ReservationRepository implements IReservationRepository {
@@ -38,12 +38,17 @@ export class ReservationRepository implements IReservationRepository {
         space: true,
         user: { select: { id: true } },
       },
-      orderBy: { startDatetime: 'asc' },
+      orderBy: { startDatetime: "asc" },
     });
 
     return reservations.map((r: (typeof reservations)[number]) => {
-      const maskPrivate = filters.currentUserId && r.isPrivate && r.userId !== filters.currentUserId;
-      const isOwner = Boolean(filters.currentUserId && r.userId === filters.currentUserId);
+      const maskPrivate =
+        filters.currentUserId &&
+        r.isPrivate &&
+        r.userId !== filters.currentUserId;
+      const isOwner = Boolean(
+        filters.currentUserId && r.userId === filters.currentUserId,
+      );
       return {
         id: r.id,
         spaceId: r.spaceId,
@@ -59,17 +64,23 @@ export class ReservationRepository implements IReservationRepository {
     });
   }
 
-  async findById(id: string, currentUserId?: string): Promise<ReservationWithDetails | null> {
+  async findById(
+    id: string,
+    currentUserId?: string,
+  ): Promise<ReservationWithDetails | null> {
     const r = await this.prisma.reservation.findFirst({
       where: { id, deletedAt: null },
       include: {
         space: true,
-        user: { select: { id: true, firstname: true, lastname: true, email: true } },
+        user: {
+          select: { id: true, firstname: true, lastname: true, email: true },
+        },
       },
     });
     if (!r) return null;
 
-    const maskPrivate = currentUserId && r.isPrivate && r.userId !== currentUserId;
+    const maskPrivate =
+      currentUserId && r.isPrivate && r.userId !== currentUserId;
     const isOwner = Boolean(currentUserId && r.userId === currentUserId);
     return {
       id: r.id,
@@ -82,8 +93,8 @@ export class ReservationRepository implements IReservationRepository {
       isPrivate: r.isPrivate,
       recurrenceGroupId: r.recurrenceGroupId ?? null,
       isOwner,
-      userName: maskPrivate ? '' : `${r.user.firstname} ${r.user.lastname}`,
-      userEmail: maskPrivate ? '' : r.user.email,
+      userName: maskPrivate ? "" : `${r.user.firstname} ${r.user.lastname}`,
+      userEmail: maskPrivate ? "" : r.user.email,
     };
   }
 
@@ -102,7 +113,9 @@ export class ReservationRepository implements IReservationRepository {
       },
       include: {
         space: true,
-        user: { select: { id: true, firstname: true, lastname: true, email: true } },
+        user: {
+          select: { id: true, firstname: true, lastname: true, email: true },
+        },
       },
     });
 
@@ -122,7 +135,9 @@ export class ReservationRepository implements IReservationRepository {
     };
   }
 
-  async createMany(inputs: CreateReservationInput[]): Promise<ReservationWithDetails[]> {
+  async createMany(
+    inputs: CreateReservationInput[],
+  ): Promise<ReservationWithDetails[]> {
     const results: ReservationWithDetails[] = [];
     for (const input of inputs) {
       const created = await this.create(input);
@@ -131,7 +146,10 @@ export class ReservationRepository implements IReservationRepository {
     return results;
   }
 
-  async update(id: string, input: UpdateReservationInput): Promise<ReservationWithDetails | null> {
+  async update(
+    id: string,
+    input: UpdateReservationInput,
+  ): Promise<ReservationWithDetails | null> {
     const r = await this.prisma.reservation.updateMany({
       where: { id, deletedAt: null },
       data: {
@@ -139,8 +157,12 @@ export class ReservationRepository implements IReservationRepository {
         ...(input.endDatetime && { endDatetime: input.endDatetime }),
         ...(input.title !== undefined && { title: input.title }),
         ...(input.isPrivate !== undefined && { isPrivate: input.isPrivate }),
-        ...(input.recurrenceRule !== undefined && { recurrenceRule: input.recurrenceRule }),
-        ...(input.recurrenceEndAt !== undefined && { recurrenceEndAt: input.recurrenceEndAt }),
+        ...(input.recurrenceRule !== undefined && {
+          recurrenceRule: input.recurrenceRule,
+        }),
+        ...(input.recurrenceEndAt !== undefined && {
+          recurrenceEndAt: input.recurrenceEndAt,
+        }),
       },
     });
 
@@ -156,7 +178,9 @@ export class ReservationRepository implements IReservationRepository {
     return r.count > 0;
   }
 
-  async softDeleteByRecurrenceGroupId(recurrenceGroupId: string): Promise<number> {
+  async softDeleteByRecurrenceGroupId(
+    recurrenceGroupId: string,
+  ): Promise<number> {
     const r = await this.prisma.reservation.updateMany({
       where: { recurrenceGroupId, deletedAt: null },
       data: { deletedAt: new Date() },
@@ -173,9 +197,7 @@ export class ReservationRepository implements IReservationRepository {
     const where: Prisma.ReservationWhereInput = {
       spaceId,
       deletedAt: null,
-      OR: [
-        { startDatetime: { lt: end }, endDatetime: { gt: start } },
-      ],
+      OR: [{ startDatetime: { lt: end }, endDatetime: { gt: start } }],
     };
     if (excludeReservationId) {
       where.id = { not: excludeReservationId };
@@ -210,7 +232,7 @@ export class ReservationRepository implements IReservationRepository {
         isPrivate: true,
         title: true,
       },
-      orderBy: { startDatetime: 'asc' },
+      orderBy: { startDatetime: "asc" },
     });
 
     return items.map((r) => ({
@@ -224,4 +246,3 @@ export class ReservationRepository implements IReservationRepository {
     }));
   }
 }
-
