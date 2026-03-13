@@ -43,6 +43,7 @@ export class ReservationRepository implements IReservationRepository {
 
     return reservations.map((r: (typeof reservations)[number]) => {
       const maskPrivate = filters.currentUserId && r.isPrivate && r.userId !== filters.currentUserId;
+      const isOwner = Boolean(filters.currentUserId && r.userId === filters.currentUserId);
       return {
         id: r.id,
         spaceId: r.spaceId,
@@ -53,6 +54,7 @@ export class ReservationRepository implements IReservationRepository {
         title: maskPrivate ? null : r.title,
         isPrivate: r.isPrivate,
         recurrenceGroupId: r.recurrenceGroupId ?? null,
+        isOwner,
       };
     });
   }
@@ -68,6 +70,7 @@ export class ReservationRepository implements IReservationRepository {
     if (!r) return null;
 
     const maskPrivate = currentUserId && r.isPrivate && r.userId !== currentUserId;
+    const isOwner = Boolean(currentUserId && r.userId === currentUserId);
     return {
       id: r.id,
       spaceId: r.spaceId,
@@ -78,6 +81,7 @@ export class ReservationRepository implements IReservationRepository {
       title: maskPrivate ? null : r.title,
       isPrivate: r.isPrivate,
       recurrenceGroupId: r.recurrenceGroupId ?? null,
+      isOwner,
       userName: maskPrivate ? '' : `${r.user.firstname} ${r.user.lastname}`,
       userEmail: maskPrivate ? '' : r.user.email,
     };
@@ -112,6 +116,7 @@ export class ReservationRepository implements IReservationRepository {
       title: r.title,
       isPrivate: r.isPrivate,
       recurrenceGroupId: r.recurrenceGroupId ?? null,
+      isOwner: true,
       userName: `${r.user.firstname} ${r.user.lastname}`,
       userEmail: r.user.email,
     };

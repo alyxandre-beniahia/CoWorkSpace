@@ -13,6 +13,8 @@ export type ReservationListItem = {
   title: string | null;
   isPrivate: boolean;
   recurrenceGroupId?: string | null;
+  /** true si la réservation appartient à l'utilisateur connecté (currentUserId) */
+  isOwner: boolean;
 };
 
 export type ReservationWithDetails = ReservationListItem & {
