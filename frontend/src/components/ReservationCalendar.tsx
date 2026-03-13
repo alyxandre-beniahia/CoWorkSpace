@@ -9,6 +9,7 @@ import type {
   EventInput,
 } from "@fullcalendar/core";
 import type { EventResizeDoneArg } from "@fullcalendar/interaction";
+import type { ReservationEventExtendedProps } from "@/types/reservation";
 
 const defaultEvents: EventInput[] = [];
 
@@ -66,8 +67,8 @@ export function ReservationCalendar({
       allDaySlot={false}
       selectable={selectable}
       selectMirror
-      // On pourrait affiner pour empêcher la sélection qui chevauche un évènement,
-      // mais dans un premier temps on laisse FullCalendar gérer le chevauchement.
+      selectOverlap={false}
+      // Créneaux réservés non sélectionnables (US-RES-01).
       select={(arg: DateSelectArg) => {
         if (!onSelectSlot) return;
         onSelectSlot({ start: arg.start, end: arg.end });
@@ -79,7 +80,7 @@ export function ReservationCalendar({
         const start = event.start;
         const end = event.end;
         if (!start || !end) return;
-        const extended: any = event.extendedProps ?? {};
+        const extended = (event.extendedProps ?? {}) as ReservationEventExtendedProps;
         const canEdit = Boolean(extended.canEdit);
         onEventClick({
           id: String(event.id),
@@ -90,7 +91,7 @@ export function ReservationCalendar({
       }}
       eventDrop={(arg: EventDropArg) => {
         if (!onEventChange) return;
-        const extended: any = arg.event.extendedProps ?? {};
+        const extended = (arg.event.extendedProps ?? {}) as ReservationEventExtendedProps;
         const canEdit = Boolean(extended.canEdit);
         if (!editableEvents || !canEdit) {
           arg.revert();
@@ -110,7 +111,7 @@ export function ReservationCalendar({
       }}
       eventResize={(arg: EventResizeDoneArg) => {
         if (!onEventChange) return;
-        const extended: any = arg.event.extendedProps ?? {};
+        const extended = (arg.event.extendedProps ?? {}) as ReservationEventExtendedProps;
         const canEdit = Boolean(extended.canEdit);
         if (!editableEvents || !canEdit) {
           arg.revert();

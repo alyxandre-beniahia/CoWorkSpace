@@ -7,6 +7,7 @@ import {
   SPACE_STATUS_LABELS,
   SPACE_TYPE_LABELS,
 } from "@/types/space";
+import type { ReservationCalendarItem } from "@/types/reservation";
 import { getDayRange, toIsoString } from "@/lib/date";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -14,13 +15,6 @@ type SpacesPlanKonvaProps = {
   onSelectSpace: (space: SpaceDetail) => void;
   editable?: boolean;
   onPositionChange?: (spaceId: string, x: number, y: number) => void;
-};
-
-type ReservationCalendarItem = {
-  id: string;
-  spaceId: string;
-  startDatetime: string;
-  endDatetime: string;
 };
 
 type SpaceWithBusy = SpaceListItem & {

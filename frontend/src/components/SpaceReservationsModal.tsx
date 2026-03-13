@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -16,21 +17,16 @@ import {
 } from "@/components/ReservationCalendar";
 import { api } from "@/lib/api";
 import type { SpaceDetail } from "@/types/space";
+import type {
+  ReservationCalendarItem,
+  CreateReservationBody,
+  UpdateReservationBody,
+} from "@/types/reservation";
 import { getWeekRange, toIsoString } from "@/lib/date";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
-export type ReservationCalendarItem = {
-  id: string;
-  spaceId: string;
-  userId: string;
-  startDatetime: string;
-  endDatetime: string;
-  isPrivate: boolean;
-  title: string | null;
-  effectiveTitle: string | null;
-  isOwner: boolean;
-};
+export type { ReservationCalendarItem };
 
 type HourSlot = {
   start: Date;
@@ -68,6 +64,7 @@ export function SpaceReservationsModal({
   const [submitting, setSubmitting] = useState(false);
   const [selectedReservation, setSelectedReservation] =
     useState<SelectedReservation | null>(null);
+  const [isPrivate, setIsPrivate] = useState(false);
 
   useEffect(() => {
     if (!open || !space || !token) {
@@ -142,6 +139,7 @@ export function SpaceReservationsModal({
       setSelectedSlot(null);
       setSelectedDate(new Date());
       setSelectedReservation(null);
+      setIsPrivate(false);
     }
   }, [open]);
 
@@ -194,16 +192,17 @@ export function SpaceReservationsModal({
     if (!space || !token || !selectedSlot) return;
     setSubmitting(true);
     try {
+      const body: CreateReservationBody = {
+        spaceId: space.id,
+        startDatetime: selectedSlot.start.toISOString(),
+        endDatetime: selectedSlot.end.toISOString(),
+        title: null,
+        isPrivate,
+      };
       await api("/reservations", {
         method: "POST",
         token,
-        body: JSON.stringify({
-          spaceId: space.id,
-          startDatetime: selectedSlot.start.toISOString(),
-          endDatetime: selectedSlot.end.toISOString(),
-          title: null,
-          isPrivate: false,
-        }),
+        body: JSON.stringify(body),
       });
       toast.success("Créneau réservé");
       // Rafraîchir les réservations pour mettre à jour le calendrier
@@ -275,13 +274,14 @@ export function SpaceReservationsModal({
     if (!space || !token || !selectedReservation) return;
     setSubmitting(true);
     try {
+      const updateBody: UpdateReservationBody = {
+        startDatetime: selectedReservation.start.toISOString(),
+        endDatetime: selectedReservation.end.toISOString(),
+      };
       await api(`/reservations/${selectedReservation.id}`, {
         method: "PATCH",
         token,
-        body: JSON.stringify({
-          startDatetime: selectedReservation.start.toISOString(),
-          endDatetime: selectedReservation.end.toISOString(),
-        }),
+        body: JSON.stringify(updateBody),
       });
       toast.success("Réservation mise à jour");
       const { start, end } = getWeekRange(currentWeekStart);
@@ -355,8 +355,8 @@ export function SpaceReservationsModal({
     if (!window.confirm("Annuler cette réservation ?")) return;
     setSubmitting(true);
     try {
-      await api(`/reservations/${selectedReservation.id}`, {
-        method: "DELETE",
+      await api(`/reservations/${selectedReservation.id}/annuler`, {
+        method: "PATCH",
         token,
       });
       toast.success("Réservation annulée");
@@ -560,40 +560,57 @@ export function SpaceReservationsModal({
           </div>
 
           <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex flex-col">
-                <span className="font-medium text-foreground">
-                  Créneau sélectionné
-                </span>
-                {selectedSlot ? (
-                  <span className="text-muted-foreground">
-                    {selectedSlot.start.toLocaleString("fr-FR", {
-                      weekday: "short",
-                      day: "2-digit",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}{" "}
-                    →{" "}
-                    {selectedSlot.end.toLocaleTimeString("fr-FR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-col">
+                  <span className="font-medium text-foreground">
+                    Créneau sélectionné
                   </span>
-                ) : (
-                  <span className="text-muted-foreground">
-                    Sélectionnez un créneau libre dans le calendrier pour le
-                    réserver.
-                  </span>
-                )}
+                  {selectedSlot ? (
+                    <span className="text-muted-foreground">
+                      {selectedSlot.start.toLocaleString("fr-FR", {
+                        weekday: "short",
+                        day: "2-digit",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}{" "}
+                      →{" "}
+                      {selectedSlot.end.toLocaleTimeString("fr-FR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      Sélectionnez un créneau libre dans le calendrier pour le
+                      réserver.
+                    </span>
+                  )}
+                </div>
+                <Button
+                  className="min-w-[180px]"
+                  disabled={!selectedSlot || submitting}
+                  onClick={handleCreateReservation}
+                >
+                  {submitting ? "Réservation…" : "Réserver ce créneau"}
+                </Button>
               </div>
-              <Button
-                className="min-w-[180px]"
-                disabled={!selectedSlot || submitting}
-                onClick={handleCreateReservation}
-              >
-                {submitting ? "Réservation…" : "Réserver ce créneau"}
-              </Button>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="reservation-private"
+                  checked={isPrivate}
+                  onChange={(e) => setIsPrivate(e.target.checked)}
+                  className="size-4 rounded border-input"
+                />
+                <Label
+                  htmlFor="reservation-private"
+                  className="cursor-pointer text-muted-foreground font-normal"
+                >
+                  Réservation privée (visible uniquement par moi)
+                </Label>
+              </div>
             </div>
           </div>
 
