@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { SPACE_STATUS_CLASS, SPACE_STATUS_LABELS, SPACE_TYPE_LABELS } from '@/types/space'
+import { SPACE_STATUS_CLASS, SPACE_STATUS_LABELS } from '@/types/space'
 import type { SpaceType, SpaceStatus } from '@/types/space'
 
 export type SpaceForPlan = {
