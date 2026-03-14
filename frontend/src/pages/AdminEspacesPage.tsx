@@ -4,6 +4,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { useAuth } from '@/contexts/AuthContext'
 import { api } from '@/lib/api'
 import { AdminSpacesPlan } from '@/components/AdminSpacesPlan'
@@ -50,8 +57,12 @@ export function AdminEspacesPage() {
   const [spaces, setSpaces] = useState<AdminSpace[]>([])
   const [equipements, setEquipements] = useState<AdminEquipementListItem[]>([])
   const [loading, setLoading] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState(defaultForm)
+  const [editingSpace, setEditingSpace] = useState<AdminSpace | null>(null)
+  const [createForm, setCreateForm] = useState(defaultForm)
+  const [editForm, setEditForm] = useState(defaultForm)
+  const [pendingEquipements, setPendingEquipements] = useState<{ equipementId: string; name: string; quantity: number }[]>([])
+  const [createAttachEquipementId, setCreateAttachEquipementId] = useState<string>('')
+  const [createAttachQuantity, setCreateAttachQuantity] = useState(1)
 
   async function load() {
     if (!token) return
@@ -74,14 +85,9 @@ export function AdminEspacesPage() {
     load()
   }, [token])
 
-  function startCreate() {
-    setEditingId(null)
-    setForm(defaultForm)
-  }
-
-  function startEdit(space: AdminSpace) {
-    setEditingId(space.id)
-    setForm({
+  function openEditModal(space: AdminSpace) {
+    setEditingSpace(space)
+    setEditForm({
       name: space.name,
       code: space.code ?? '',
       type: space.type,
@@ -93,37 +99,103 @@ export function AdminEspacesPage() {
     })
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function closeEditModal() {
+    setEditingSpace(null)
+    setEditForm(defaultForm)
+    setAttachEquipementId('')
+    setAttachQuantity(1)
+  }
+
+  function addPendingEquipement(equipementId: string, quantity: number) {
+    const eq = equipements.find((e) => e.id === equipementId)
+    if (!eq) return
+    const existing = pendingEquipements.find((p) => p.equipementId === equipementId)
+    if (existing) {
+      setPendingEquipements((prev) =>
+        prev.map((p) =>
+          p.equipementId === equipementId ? { ...p, quantity: p.quantity + quantity } : p
+        )
+      )
+    } else {
+      setPendingEquipements((prev) => [...prev, { equipementId, name: eq.name, quantity }])
+    }
+    setCreateAttachEquipementId('')
+    setCreateAttachQuantity(1)
+  }
+
+  function removePendingEquipement(equipementId: string, quantity?: number) {
+    const existing = pendingEquipements.find((p) => p.equipementId === equipementId)
+    if (!existing) return
+    if (quantity == null || quantity >= existing.quantity) {
+      setPendingEquipements((prev) => prev.filter((p) => p.equipementId !== equipementId))
+    } else {
+      setPendingEquipements((prev) =>
+        prev.map((p) =>
+          p.equipementId === equipementId ? { ...p, quantity: p.quantity - quantity } : p
+        )
+      )
+    }
+  }
+
+  async function handleCreateSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!token) return
     const payload = {
-      name: form.name.trim(),
-      code: form.code?.trim() || null,
-      type: form.type,
-      capacity: Number(form.capacity) || 1,
-      status: form.status,
-      description: form.description?.trim() || null,
-      positionX: form.positionX,
-      positionY: form.positionY,
+      name: createForm.name.trim(),
+      code: createForm.code?.trim() || null,
+      type: createForm.type,
+      capacity: Number(createForm.capacity) || 1,
+      status: createForm.status ?? 'AVAILABLE',
+      description: createForm.description?.trim() || null,
+      positionX: null,
+      positionY: null,
     }
     try {
-      if (editingId) {
-        await api(`/admin/espaces/${editingId}`, {
-          method: 'PATCH',
-          body: JSON.stringify(payload),
-          token,
-        })
-        toast.success('Espace mis à jour')
-      } else {
-        await api('/admin/espaces', {
+      const created = await api<AdminSpace>('/admin/espaces', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        token,
+      })
+      for (const p of pendingEquipements) {
+        await api(`/admin/espaces/${created.id}/equipements`, {
           method: 'POST',
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ equipementId: p.equipementId, quantity: p.quantity }),
           token,
         })
-        toast.success('Espace créé')
       }
+      toast.success('Espace créé')
+      setCreateForm(defaultForm)
+      setPendingEquipements([])
+      setCreateAttachEquipementId('')
+      setCreateAttachQuantity(1)
       await load()
-      if (!editingId) setForm(defaultForm)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Impossible d'enregistrer l'espace")
+    }
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!token || !editingSpace) return
+    const payload = {
+      name: editForm.name.trim(),
+      code: editForm.code?.trim() || null,
+      type: editForm.type,
+      capacity: Number(editForm.capacity) || 1,
+      status: editForm.status,
+      description: editForm.description?.trim() || null,
+      positionX: editForm.positionX,
+      positionY: editForm.positionY,
+    }
+    try {
+      await api(`/admin/espaces/${editingSpace.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+        token,
+      })
+      toast.success('Espace mis à jour')
+      closeEditModal()
+      await load()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Impossible d'enregistrer l'espace")
     }
@@ -135,6 +207,7 @@ export function AdminEspacesPage() {
     try {
       await api(`/admin/espaces/${id}`, { method: 'DELETE', token })
       toast.success('Espace supprimé')
+      if (editingSpace?.id === id) closeEditModal()
       await load()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Impossible de supprimer l'espace")
@@ -160,9 +233,9 @@ export function AdminEspacesPage() {
   const [attachQuantity, setAttachQuantity] = useState(1)
 
   async function handleAttachEquipement(equipementId: string, quantity: number) {
-    if (!token || !editingId) return
+    if (!token || !editingSpace) return
     try {
-      await api(`/admin/espaces/${editingId}/equipements`, {
+      await api(`/admin/espaces/${editingSpace.id}/equipements`, {
         method: 'POST',
         body: JSON.stringify({ equipementId, quantity }),
         token,
@@ -177,12 +250,12 @@ export function AdminEspacesPage() {
   }
 
   async function handleDetachEquipement(equipementId: string, quantity?: number) {
-    if (!token || !editingId) return
+    if (!token || !editingSpace) return
     try {
       const url =
         quantity != null
-          ? `/admin/espaces/${editingId}/equipements/${equipementId}?quantity=${quantity}`
-          : `/admin/espaces/${editingId}/equipements/${equipementId}`
+          ? `/admin/espaces/${editingSpace.id}/equipements/${equipementId}?quantity=${quantity}`
+          : `/admin/espaces/${editingSpace.id}/equipements/${equipementId}`
       await api(url, { method: 'DELETE', token })
       toast.success(quantity != null ? '1 unité retirée' : 'Équipement retiré')
       await load()
@@ -191,10 +264,27 @@ export function AdminEspacesPage() {
     }
   }
 
-  const editingSpace = editingId ? spaces.find((s) => s.id === editingId) : null
+  const currentEditingSpace = editingSpace ? spaces.find((s) => s.id === editingSpace.id) ?? editingSpace : null
   const equipementsWithAvailability = equipements.filter(
     (e) => (e.available ?? e.quantity) > 0
   )
+  const pendingByEquipement = (id: string) =>
+    pendingEquipements.filter((p) => p.equipementId === id).reduce((sum, p) => sum + p.quantity, 0)
+  const equipementsAvailableForCreate = equipements.filter((e) => {
+    const total = e.available ?? e.quantity
+    const pending = pendingByEquipement(e.id)
+    return total - pending > 0
+  })
+  const createSelectedEquipement = createAttachEquipementId
+    ? equipements.find((e) => e.id === createAttachEquipementId)
+    : null
+  const createMaxAttachQuantity = createSelectedEquipement
+    ? Math.max(
+        0,
+        (createSelectedEquipement.available ?? createSelectedEquipement.quantity) -
+          pendingByEquipement(createSelectedEquipement.id)
+      )
+    : 1
   const selectedEquipement = attachEquipementId
     ? equipements.find((e) => e.id === attachEquipementId)
     : null
@@ -211,20 +301,20 @@ export function AdminEspacesPage() {
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1.5fr)]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <Card>
           <CardHeader>
-            <CardTitle>{editingId ? 'Modifier un espace' : 'Nouvel espace'}</CardTitle>
+            <CardTitle>Nouvel espace</CardTitle>
             <CardDescription>Nom, type, capacité et description.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleCreateSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nom</Label>
                 <Input
                   id="name"
-                  value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  value={createForm.name}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
                   className="min-h-[44px] md:min-h-0"
                 />
               </div>
@@ -232,19 +322,20 @@ export function AdminEspacesPage() {
                 <Label htmlFor="code">Code</Label>
                 <Input
                   id="code"
-                  value={form.code ?? ''}
-                  onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
+                  value={createForm.code ?? ''}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, code: e.target.value }))}
                   className="min-h-[44px] md:min-h-0"
                 />
               </div>
               <div className="space-y-2">
                 <Label>Type</Label>
                 <Select
-                  value={form.type}
-                  onValueChange={(v) => setForm((f) => ({ ...f, type: v as SpaceType }))}
+                  value={createForm.type}
+                  onValueChange={(v) => setCreateForm((f) => ({ ...f, type: v as SpaceType }))}
+                  items={SPACE_TYPE_LABELS}
                 >
                   <SelectTrigger className="min-h-[44px] md:min-h-0">
-                    <SelectValue />
+                    <SelectValue placeholder="Choisir le type" />
                   </SelectTrigger>
                   <SelectContent>
                     {(Object.keys(SPACE_TYPE_LABELS) as SpaceType[]).map((t) => (
@@ -261,9 +352,12 @@ export function AdminEspacesPage() {
                   id="capacity"
                   type="number"
                   min={1}
-                  value={form.capacity}
+                  value={createForm.capacity}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, capacity: Number(e.target.value) || f.capacity }))
+                    setCreateForm((f) => ({
+                      ...f,
+                      capacity: Number(e.target.value) || f.capacity,
+                    }))
                   }
                   className="min-h-[44px] md:min-h-0"
                 />
@@ -272,36 +366,233 @@ export function AdminEspacesPage() {
                 <Label htmlFor="description">Description</Label>
                 <Input
                   id="description"
-                  value={form.description ?? ''}
-                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  value={createForm.description ?? ''}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
                   className="min-h-[44px] md:min-h-0"
                 />
               </div>
-              {editingId && (
-                <div className="space-y-2">
-                  <Label>Statut</Label>
-                  <Select
-                    value={form.status ?? 'AVAILABLE'}
-                    onValueChange={(v) => setForm((f) => ({ ...f, status: v as SpaceStatus }))}
-                  >
-                    <SelectTrigger className="min-h-[44px] md:min-h-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(Object.keys(SPACE_STATUS_LABELS) as SpaceStatus[]).map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {SPACE_STATUS_LABELS[s]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-2">
+                <Label>Équipements à associer</Label>
+                <div className="flex flex-wrap gap-2">
+                  {pendingEquipements.map((p) => (
+                    <span
+                      key={p.equipementId}
+                      className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-sm"
+                    >
+                      {p.name} × {p.quantity}
+                      <button
+                        type="button"
+                        onClick={() => removePendingEquipement(p.equipementId, 1)}
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label={`Retirer 1 ${p.name}`}
+                        title="Retirer 1"
+                      >
+                        −1
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removePendingEquipement(p.equipementId)}
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label={`Retirer tout ${p.name}`}
+                        title="Retirer tout"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
                 </div>
-              )}
-              {editingId && editingSpace && (
+                {equipementsAvailableForCreate.length > 0 && (
+                  <div className="flex flex-wrap gap-2 items-end">
+                    <Select
+                      value={createAttachEquipementId}
+                      onValueChange={(v) => {
+                        setCreateAttachEquipementId(v ?? '')
+                        const eq = equipements.find((e) => e.id === v)
+                        const avail =
+                          eq ? (eq.available ?? eq.quantity) - pendingByEquipement(eq.id) : 1
+                        setCreateAttachQuantity(Math.min(createAttachQuantity, Math.max(1, avail)))
+                      }}
+                      items={Object.fromEntries(
+                        equipementsAvailableForCreate.map((e) => [
+                          e.id,
+                          `${e.name} (${(e.available ?? e.quantity) - pendingByEquipement(e.id)} dispo.)`,
+                        ])
+                      )}
+                    >
+                      <SelectTrigger className="min-h-[44px] md:min-h-0 w-full max-w-[200px]">
+                        <SelectValue placeholder="Ajouter un équipement" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {equipementsAvailableForCreate.map((e) => (
+                          <SelectItem key={e.id} value={e.id}>
+                            {e.name} ({(e.available ?? e.quantity) - pendingByEquipement(e.id)} dispo.)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={createMaxAttachQuantity}
+                        value={createAttachQuantity}
+                        onChange={(e) =>
+                          setCreateAttachQuantity(
+                            Math.max(
+                              1,
+                              Math.min(Number(e.target.value) || 1, createMaxAttachQuantity)
+                            )
+                          )
+                        }
+                        className="w-16 min-h-[44px] md:min-h-0"
+                        disabled={!createAttachEquipementId}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() =>
+                          createAttachEquipementId &&
+                          addPendingEquipement(
+                            createAttachEquipementId,
+                            Math.min(createAttachQuantity, createMaxAttachQuantity)
+                          )
+                        }
+                        disabled={!createAttachEquipementId}
+                        className="min-h-[44px] md:min-h-0"
+                      >
+                        Ajouter
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <Button type="submit" className="min-h-[44px] md:min-h-0">
+                Créer
+              </Button>
+            </form>
+
+            <div className="mt-6 space-y-2">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold">Liste des espaces</h2>
+                <Button variant="ghost" size="sm" onClick={load} disabled={loading}>
+                  Rafraîchir
+                </Button>
+              </div>
+              <ul className="space-y-1 text-sm max-h-56 overflow-auto">
+                {spaces.map((s) => (
+                  <li
+                    key={s.id}
+                    className="flex items-center justify-between gap-2 rounded-md border px-2 py-1"
+                  >
+                    <span className="truncate">
+                      {s.name} {s.code ? `(${s.code})` : ''} · {s.capacity}p
+                    </span>
+                    <div className="flex gap-1">
+                      <Button size="xs" variant="outline" onClick={() => openEditModal(s)}>
+                        Modifier
+                      </Button>
+                      <Button size="xs" variant="ghost" onClick={() => handleDelete(s.id)}>
+                        Supprimer
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+                {spaces.length === 0 && !loading && (
+                  <li className="text-muted-foreground text-xs">Aucun espace pour le moment.</li>
+                )}
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Dialog open={!!editingSpace} onOpenChange={(open) => !open && closeEditModal()}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Modifier l&apos;espace</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Nom</Label>
+                <Input
+                  id="edit-name"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-code">Code</Label>
+                <Input
+                  id="edit-code"
+                  value={editForm.code ?? ''}
+                  onChange={(e) => setEditForm((f) => ({ ...f, code: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Type</Label>
+                <Select
+                  value={editForm.type}
+                  onValueChange={(v) => setEditForm((f) => ({ ...f, type: v as SpaceType }))}
+                  items={SPACE_TYPE_LABELS}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choisir le type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(SPACE_TYPE_LABELS) as SpaceType[]).map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {SPACE_TYPE_LABELS[t]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-capacity">Capacité</Label>
+                <Input
+                  id="edit-capacity"
+                  type="number"
+                  min={1}
+                  value={editForm.capacity}
+                  onChange={(e) =>
+                    setEditForm((f) => ({
+                      ...f,
+                      capacity: Number(e.target.value) || f.capacity,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-description">Description</Label>
+                <Input
+                  id="edit-description"
+                  value={editForm.description ?? ''}
+                  onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Statut</Label>
+                <Select
+                  value={editForm.status ?? 'AVAILABLE'}
+                  onValueChange={(v) => setEditForm((f) => ({ ...f, status: v as SpaceStatus }))}
+                  items={SPACE_STATUS_LABELS}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choisir le statut" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(SPACE_STATUS_LABELS) as SpaceStatus[]).map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {SPACE_STATUS_LABELS[s]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {currentEditingSpace && (
                 <div className="space-y-2">
                   <Label>Équipements</Label>
                   <div className="flex flex-wrap gap-2">
-                    {editingSpace.equipements.map((eq) => (
+                    {currentEditingSpace.equipements.map((eq) => (
                       <span
                         key={eq.id}
                         className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-sm"
@@ -338,8 +629,14 @@ export function AdminEspacesPage() {
                           const avail = eq?.available ?? eq?.quantity ?? 1
                           setAttachQuantity(Math.min(attachQuantity, Math.max(1, avail)))
                         }}
+                        items={Object.fromEntries(
+                          equipementsWithAvailability.map((e) => [
+                            e.id,
+                            `${e.name} (${e.available ?? e.quantity} dispo.)`,
+                          ])
+                        )}
                       >
-                        <SelectTrigger className="min-h-[44px] md:min-h-0 w-[180px]">
+                        <SelectTrigger className="w-[180px]">
                           <SelectValue placeholder="Ajouter un équipement" />
                         </SelectTrigger>
                         <SelectContent>
@@ -361,7 +658,7 @@ export function AdminEspacesPage() {
                               Math.max(1, Math.min(Number(e.target.value) || 1, maxAttachQuantity))
                             )
                           }
-                          className="w-16 min-h-[44px] md:min-h-0"
+                          className="w-16"
                           disabled={!attachEquipementId}
                         />
                         <Button
@@ -375,7 +672,6 @@ export function AdminEspacesPage() {
                             )
                           }
                           disabled={!attachEquipementId}
-                          className="min-h-[44px] md:min-h-0"
                         >
                           Ajouter
                         </Button>
@@ -384,56 +680,15 @@ export function AdminEspacesPage() {
                   )}
                 </div>
               )}
-              <div className="flex gap-2">
-                <Button type="submit" className="min-h-[44px] md:min-h-0">
-                  {editingId ? 'Mettre à jour' : 'Créer'}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={closeEditModal}>
+                  Annuler
                 </Button>
-                {editingId && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="min-h-[44px] md:min-h-0"
-                    onClick={startCreate}
-                  >
-                    Annuler
-                  </Button>
-                )}
-              </div>
+                <Button type="submit">Enregistrer</Button>
+              </DialogFooter>
             </form>
-
-            <div className="mt-6 space-y-2">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold">Liste des espaces</h2>
-                <Button variant="ghost" size="sm" onClick={load} disabled={loading}>
-                  Rafraîchir
-                </Button>
-              </div>
-              <ul className="space-y-1 text-sm max-h-56 overflow-auto">
-                {spaces.map((s) => (
-                  <li
-                    key={s.id}
-                    className="flex items-center justify-between gap-2 rounded-md border px-2 py-1"
-                  >
-                    <span className="truncate">
-                      {s.name} {s.code ? `(${s.code})` : ''} · {s.capacity}p
-                    </span>
-                    <div className="flex gap-1">
-                      <Button size="xs" variant="outline" onClick={() => startEdit(s)}>
-                        Modifier
-                      </Button>
-                      <Button size="xs" variant="ghost" onClick={() => handleDelete(s.id)}>
-                        Supprimer
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-                {spaces.length === 0 && !loading && (
-                  <li className="text-muted-foreground text-xs">Aucun espace pour le moment.</li>
-                )}
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
+          </DialogContent>
+        </Dialog>
 
         <Card>
           <CardHeader>
