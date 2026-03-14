@@ -20,6 +20,8 @@ export type SpaceListItem = {
   type: string;
   capacity: number;
   status: string;
+  positionX: number | null;
+  positionY: number | null;
   equipements: string[];
 };
 

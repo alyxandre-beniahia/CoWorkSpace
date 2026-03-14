@@ -40,6 +40,8 @@ export class SpaceRepository implements ISpaceRepository {
       type: s.type,
       capacity: s.capacity,
       status: s.status,
+      positionX: s.positionX,
+      positionY: s.positionY,
       equipements: s.spaceEquipements.map((se) => se.equipement.name),
     }));
   }

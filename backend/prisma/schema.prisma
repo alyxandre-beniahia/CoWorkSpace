@@ -14,6 +14,7 @@ enum SpaceType {
   MEETING_ROOM
   HOT_DESK
   OPEN_SPACE
+  OTHER
 }
 
 enum SpaceStatus {

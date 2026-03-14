@@ -1,6 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
-import { SpacesPlanKonva } from "@/components/SpacesPlanKonva";
+import { HomeSpacesPlan } from "@/components/HomeSpacesPlan";
 import { SpaceReservationsModal } from "@/components/SpaceReservationsModal";
 import type { SpaceDetail } from "@/types/space";
 import { useState } from "react";
@@ -28,7 +28,7 @@ export function HomePage() {
       </div>
       <Card>
         <CardContent>
-          <SpacesPlanKonva
+          <HomeSpacesPlan
             onSelectSpace={(space) => {
               setSelectedSpace(space);
               setModalOpen(true);
