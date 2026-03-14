@@ -538,6 +538,37 @@ export function SpaceReservationsModal({
                   <p className="mt-1">{space.description}</p>
                 )}
               </div>
+              {isOpenSpace && (
+                <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm">
+                  <Label htmlFor="seat-select" className="font-medium text-foreground">
+                    Poste
+                  </Label>
+                  {seats.length > 0 ? (
+                    <Select
+                      value={selectedSeatId ?? ""}
+                      onValueChange={(v) => setSelectedSeatId(v || null)}
+                    >
+                      <SelectTrigger
+                        id="seat-select"
+                        className="min-h-[44px] md:min-h-0 w-full max-w-[200px]"
+                      >
+                        <SelectValue placeholder="Choisir un poste" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {seats.map((seat) => (
+                          <SelectItem key={seat.id} value={seat.id}>
+                            {seat.code}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-muted-foreground text-xs">
+                      Aucun poste configuré pour cet espace.
+                    </p>
+                  )}
+                </div>
+              )}
               {space.equipements.length > 0 && (
                 <div className="space-y-1">
                   <p className="font-medium text-foreground">Équipements</p>
@@ -648,31 +679,6 @@ export function SpaceReservationsModal({
             </div>
           </div>
 
-          {isOpenSpace && seats.length > 0 && (
-            <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm">
-              <Label htmlFor="seat-select" className="font-medium text-foreground">
-                Poste
-              </Label>
-              <Select
-                value={selectedSeatId ?? ""}
-                onValueChange={(v) => setSelectedSeatId(v || null)}
-              >
-                <SelectTrigger
-                  id="seat-select"
-                  className="min-h-[44px] md:min-h-0 w-full max-w-[200px]"
-                >
-                  <SelectValue placeholder="Choisir un poste" />
-                </SelectTrigger>
-                <SelectContent>
-                  {seats.map((seat) => (
-                    <SelectItem key={seat.id} value={seat.id}>
-                      {seat.code}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
           <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm">
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-2">
