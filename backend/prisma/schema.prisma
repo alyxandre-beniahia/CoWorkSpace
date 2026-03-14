@@ -148,6 +148,7 @@ model Seat {
 model Equipement {
   id               String   @id @default(cuid())
   name             String
+  quantity         Int      @default(1) // stock total
   spaceEquipements SpaceEquipement[]
 
   @@index([name])
@@ -160,6 +161,7 @@ model SpaceEquipement {
   id           String @id @default(cuid())
   spaceId      String
   equipementId String
+  quantity     Int    @default(1) // combien dans cet espace
 
   space      Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   equipement Equipement @relation(fields: [equipementId], references: [id], onDelete: Cascade)

@@ -1,7 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards, NotFoundException } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/infrastructure/jwt-auth.guard';
 import { AdminGuard } from '../auth/infrastructure/admin.guard';
-import { PrismaService } from '../prisma/prisma.service';
+import { ListAdminSpacesUseCase } from './application/list-admin-spaces.use-case';
+import { CreateSpaceUseCase } from './application/create-space.use-case';
+import { UpdateSpaceUseCase } from './application/update-space.use-case';
+import { DeleteSpaceUseCase } from './application/delete-space.use-case';
+import { AttachEquipementToSpaceUseCase } from './application/attach-equipement-to-space.use-case';
+import { DetachEquipementFromSpaceUseCase } from './application/detach-equipement-from-space.use-case';
 import { SpaceType, SpaceStatus } from '@prisma/client';
 
 type CreateSpaceDto = {
@@ -20,92 +25,57 @@ type UpdateSpaceDto = Partial<CreateSpaceDto> & {
 
 type AttachEquipementDto = {
   equipementId: string;
+  quantity?: number;
 };
 
 @Controller('admin/espaces')
 @UseGuards(JwtAuthGuard, AdminGuard)
 export class AdminSpacesController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly listAdminSpacesUseCase: ListAdminSpacesUseCase,
+    private readonly createSpaceUseCase: CreateSpaceUseCase,
+    private readonly updateSpaceUseCase: UpdateSpaceUseCase,
+    private readonly deleteSpaceUseCase: DeleteSpaceUseCase,
+    private readonly attachEquipementToSpaceUseCase: AttachEquipementToSpaceUseCase,
+    private readonly detachEquipementFromSpaceUseCase: DetachEquipementFromSpaceUseCase,
+  ) {}
 
   @Get()
   async list() {
-    const spaces = await this.prisma.space.findMany({
-      include: {
-        spaceEquipements: { include: { equipement: true } },
-      },
-      orderBy: { name: 'asc' },
-    });
-    return spaces.map((s) => ({
-      id: s.id,
-      name: s.name,
-      code: s.code,
-      type: s.type,
-      capacity: s.capacity,
-      status: s.status,
-      description: s.description,
-      positionX: s.positionX,
-      positionY: s.positionY,
-      equipements: s.spaceEquipements.map((se) => ({ id: se.equipement.id, name: se.equipement.name })),
-    }));
+    return this.listAdminSpacesUseCase.run();
   }
 
   @Post()
   async create(@Body() dto: CreateSpaceDto) {
-    const space = await this.prisma.space.create({
-      data: {
-        name: dto.name,
-        code: dto.code ?? null,
-        type: dto.type,
-        capacity: dto.capacity,
-        description: dto.description ?? null,
-        positionX: dto.positionX ?? null,
-        positionY: dto.positionY ?? null,
-      },
-    });
-    return space;
+    return this.createSpaceUseCase.run(dto);
   }
 
   @Patch(':id')
   async update(@Param('id') id: string, @Body() dto: UpdateSpaceDto) {
-    const space = await this.prisma.space.update({
-      where: { id },
-      data: {
-        ...(dto.name !== undefined && { name: dto.name }),
-        ...(dto.code !== undefined && { code: dto.code }),
-        ...(dto.type !== undefined && { type: dto.type }),
-        ...(dto.capacity !== undefined && { capacity: dto.capacity }),
-        ...(dto.description !== undefined && { description: dto.description }),
-        ...(dto.positionX !== undefined && { positionX: dto.positionX }),
-        ...(dto.positionY !== undefined && { positionY: dto.positionY }),
-        ...(dto.status !== undefined && { status: dto.status }),
-      },
-    });
-    return space;
+    const result = await this.updateSpaceUseCase.run(id, dto);
+    if (!result) {
+      throw new NotFoundException('Espace non trouvé');
+    }
+    return result;
   }
 
   @Delete(':id')
   async remove(@Param('id') id: string) {
-    await this.prisma.space.delete({ where: { id } });
-    return { deleted: true };
+    return this.deleteSpaceUseCase.run(id);
   }
 
   @Post(':id/equipements')
   async attachEquipement(@Param('id') spaceId: string, @Body() body: AttachEquipementDto) {
-    const link = await this.prisma.spaceEquipement.create({
-      data: {
-        spaceId,
-        equipementId: body.equipementId,
-      },
-    });
-    return link;
+    return this.attachEquipementToSpaceUseCase.run(spaceId, body.equipementId, body.quantity ?? 1);
   }
 
   @Delete(':id/equipements/:equipementId')
-  async detachEquipement(@Param('id') spaceId: string, @Param('equipementId') equipementId: string) {
-    await this.prisma.spaceEquipement.deleteMany({
-      where: { spaceId, equipementId },
-    });
-    return { deleted: true };
+  async detachEquipement(
+    @Param('id') spaceId: string,
+    @Param('equipementId') equipementId: string,
+    @Query('quantity') quantity?: string,
+  ) {
+    const qty = quantity != null ? parseInt(quantity, 10) : undefined;
+    return this.detachEquipementFromSpaceUseCase.run(spaceId, equipementId, Number.isNaN(qty) ? undefined : qty);
   }
 }
-

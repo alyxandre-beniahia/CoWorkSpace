@@ -6,10 +6,20 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useAuth } from '@/contexts/AuthContext'
 import { api } from '@/lib/api'
-import { SpacesPlanKonva } from '@/components/SpacesPlanKonva'
+import { AdminSpacesPlan } from '@/components/AdminSpacesPlan'
 import type { SpaceType, SpaceStatus } from '@/types/space'
-import { SPACE_TYPE_LABELS } from '@/types/space'
+import { SPACE_TYPE_LABELS, SPACE_STATUS_LABELS } from '@/types/space'
 import { toast } from 'sonner'
+
+type AdminEquipementListItem = {
+  id: string
+  name: string
+  quantity: number
+  assigned?: number
+  available?: number
+}
+
+type AdminSpaceEquipement = { id: string; name: string; quantity: number }
 
 type AdminSpace = {
   id: string
@@ -21,13 +31,15 @@ type AdminSpace = {
   description: string | null
   positionX: number | null
   positionY: number | null
+  equipements: AdminSpaceEquipement[]
 }
 
-const defaultForm: Omit<AdminSpace, 'id' | 'status'> & { status?: SpaceStatus } = {
+const defaultForm: Omit<AdminSpace, 'id' | 'equipements'> & { status?: SpaceStatus } = {
   name: '',
   code: '',
   type: 'MEETING_ROOM',
   capacity: 4,
+  status: 'AVAILABLE',
   description: '',
   positionX: null,
   positionY: null,
@@ -36,6 +48,7 @@ const defaultForm: Omit<AdminSpace, 'id' | 'status'> & { status?: SpaceStatus } 
 export function AdminEspacesPage() {
   const { token } = useAuth()
   const [spaces, setSpaces] = useState<AdminSpace[]>([])
+  const [equipements, setEquipements] = useState<AdminEquipementListItem[]>([])
   const [loading, setLoading] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(defaultForm)
@@ -44,8 +57,12 @@ export function AdminEspacesPage() {
     if (!token) return
     setLoading(true)
     try {
-      const data = await api<AdminSpace[]>('/admin/espaces', { token })
-      setSpaces(data)
+      const [spacesData, equipementsData] = await Promise.all([
+        api<AdminSpace[]>('/admin/espaces', { token }),
+        api<AdminEquipementListItem[]>('/admin/equipements', { token }),
+      ])
+      setSpaces(spacesData)
+      setEquipements(equipementsData)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Impossible de charger les espaces')
     } finally {
@@ -69,6 +86,7 @@ export function AdminEspacesPage() {
       code: space.code ?? '',
       type: space.type,
       capacity: space.capacity,
+      status: space.status,
       description: space.description ?? '',
       positionX: space.positionX,
       positionY: space.positionY,
@@ -83,6 +101,7 @@ export function AdminEspacesPage() {
       code: form.code?.trim() || null,
       type: form.type,
       capacity: Number(form.capacity) || 1,
+      status: form.status,
       description: form.description?.trim() || null,
       positionX: form.positionX,
       positionY: form.positionY,
@@ -130,10 +149,58 @@ export function AdminEspacesPage() {
         body: JSON.stringify({ positionX: x, positionY: y }),
         token,
       })
+      toast.success('Position enregistrée')
+      await load()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Impossible de mettre à jour la position")
     }
   }
+
+  const [attachEquipementId, setAttachEquipementId] = useState<string>('')
+  const [attachQuantity, setAttachQuantity] = useState(1)
+
+  async function handleAttachEquipement(equipementId: string, quantity: number) {
+    if (!token || !editingId) return
+    try {
+      await api(`/admin/espaces/${editingId}/equipements`, {
+        method: 'POST',
+        body: JSON.stringify({ equipementId, quantity }),
+        token,
+      })
+      toast.success('Équipement associé')
+      setAttachEquipementId('')
+      setAttachQuantity(1)
+      await load()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Impossible d'associer l'équipement")
+    }
+  }
+
+  async function handleDetachEquipement(equipementId: string, quantity?: number) {
+    if (!token || !editingId) return
+    try {
+      const url =
+        quantity != null
+          ? `/admin/espaces/${editingId}/equipements/${equipementId}?quantity=${quantity}`
+          : `/admin/espaces/${editingId}/equipements/${equipementId}`
+      await api(url, { method: 'DELETE', token })
+      toast.success(quantity != null ? '1 unité retirée' : 'Équipement retiré')
+      await load()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Impossible de retirer l'équipement")
+    }
+  }
+
+  const editingSpace = editingId ? spaces.find((s) => s.id === editingId) : null
+  const equipementsWithAvailability = equipements.filter(
+    (e) => (e.available ?? e.quantity) > 0
+  )
+  const selectedEquipement = attachEquipementId
+    ? equipements.find((e) => e.id === attachEquipementId)
+    : null
+  const maxAttachQuantity = selectedEquipement
+    ? selectedEquipement.available ?? selectedEquipement.quantity
+    : 1
 
   return (
     <div className="space-y-6">
@@ -210,6 +277,113 @@ export function AdminEspacesPage() {
                   className="min-h-[44px] md:min-h-0"
                 />
               </div>
+              {editingId && (
+                <div className="space-y-2">
+                  <Label>Statut</Label>
+                  <Select
+                    value={form.status ?? 'AVAILABLE'}
+                    onValueChange={(v) => setForm((f) => ({ ...f, status: v as SpaceStatus }))}
+                  >
+                    <SelectTrigger className="min-h-[44px] md:min-h-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(SPACE_STATUS_LABELS) as SpaceStatus[]).map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {SPACE_STATUS_LABELS[s]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {editingId && editingSpace && (
+                <div className="space-y-2">
+                  <Label>Équipements</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {editingSpace.equipements.map((eq) => (
+                      <span
+                        key={eq.id}
+                        className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-sm"
+                      >
+                        {eq.name} × {eq.quantity}
+                        <button
+                          type="button"
+                          onClick={() => handleDetachEquipement(eq.id, 1)}
+                          className="text-muted-foreground hover:text-foreground"
+                          aria-label={`Retirer 1 ${eq.name}`}
+                          title="Retirer 1"
+                        >
+                          −1
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDetachEquipement(eq.id)}
+                          className="text-muted-foreground hover:text-foreground"
+                          aria-label={`Retirer tout ${eq.name}`}
+                          title="Retirer tout"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  {equipementsWithAvailability.length > 0 && (
+                    <div className="flex flex-wrap gap-2 items-end">
+                      <Select
+                        value={attachEquipementId}
+                        onValueChange={(v) => {
+                          setAttachEquipementId(v ?? '')
+                          const eq = equipements.find((e) => e.id === v)
+                          const avail = eq?.available ?? eq?.quantity ?? 1
+                          setAttachQuantity(Math.min(attachQuantity, Math.max(1, avail)))
+                        }}
+                      >
+                        <SelectTrigger className="min-h-[44px] md:min-h-0 w-[180px]">
+                          <SelectValue placeholder="Ajouter un équipement" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {equipementsWithAvailability.map((e) => (
+                            <SelectItem key={e.id} value={e.id}>
+                              {e.name} ({e.available ?? e.quantity} dispo.)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={maxAttachQuantity}
+                          value={attachQuantity}
+                          onChange={(e) =>
+                            setAttachQuantity(
+                              Math.max(1, Math.min(Number(e.target.value) || 1, maxAttachQuantity))
+                            )
+                          }
+                          className="w-16 min-h-[44px] md:min-h-0"
+                          disabled={!attachEquipementId}
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() =>
+                            attachEquipementId &&
+                            handleAttachEquipement(
+                              attachEquipementId,
+                              Math.min(attachQuantity, maxAttachQuantity)
+                            )
+                          }
+                          disabled={!attachEquipementId}
+                          className="min-h-[44px] md:min-h-0"
+                        >
+                          Ajouter
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="flex gap-2">
                 <Button type="submit" className="min-h-[44px] md:min-h-0">
                   {editingId ? 'Mettre à jour' : 'Créer'}
@@ -265,16 +439,12 @@ export function AdminEspacesPage() {
           <CardHeader>
             <CardTitle>Disposition sur le plan</CardTitle>
             <CardDescription>
-              Faites glisser les salles pour ajuster leur position sur le plan. Les modifications
-              sont enregistrées automatiquement.
+              Cliquez sur « Placer sur le plan » pour les espaces en attente, puis sur le plan pour
+              choisir la position. Déplacez les espaces déjà placés pour les repositionner.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <SpacesPlanKonva
-              editable
-              onSelectSpace={() => {}}
-              onPositionChange={handlePositionChange}
-            />
+            <AdminSpacesPlan spaces={spaces} onPositionChange={handlePositionChange} />
           </CardContent>
         </Card>
       </div>

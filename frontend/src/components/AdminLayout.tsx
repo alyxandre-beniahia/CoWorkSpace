@@ -19,6 +19,9 @@ export function AdminLayout() {
         <Link to="/admin/espaces">
           <Button variant="ghost" size="sm">Espaces</Button>
         </Link>
+        <Link to="/admin/equipements">
+          <Button variant="ghost" size="sm">Équipements</Button>
+        </Link>
       </nav>
       <Outlet />
     </div>
