@@ -33,6 +33,7 @@ export class CreateReservationUseCase {
         start,
         end,
         recurrenceEndAt,
+        dto.timeZone ?? undefined,
       );
 
       if (occurrences.length === 0) {
@@ -48,8 +49,12 @@ export class CreateReservationUseCase {
           occ.endDatetime,
         );
         if (hasOverlap) {
+          const dateLisible = occ.startDatetime.toLocaleString('fr-FR', {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+          });
           throw new ConflictException(
-            `Le créneau du ${occ.startDatetime.toISOString()} chevauche une réservation existante.`,
+            `Impossible de créer la série : le ${dateLisible} l'espace est déjà réservé. Choisissez d'autres dates ou un autre espace.`,
           );
         }
       }

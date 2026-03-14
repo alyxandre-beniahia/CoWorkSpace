@@ -108,5 +108,81 @@ describe('CreateReservationUseCase', () => {
       } as any),
     ).rejects.toThrow(ConflictException);
   });
+
+  it('crée une réservation récurrente avec succès', async () => {
+    const recurrenceEndAt = new Date('2026-04-05T23:59:59Z');
+
+    const result = await useCase.run(userId, {
+      spaceId,
+      startDatetime: baseStart.toISOString(),
+      endDatetime: baseEnd.toISOString(),
+      recurrenceRule: 'FREQ=DAILY',
+      recurrenceEndAt: recurrenceEndAt.toISOString(),
+      title: 'Réunion récurrente',
+    } as any) as { created: number; recurrenceGroupId: string; first: any };
+
+    expect(result).toHaveProperty('created');
+    expect(result).toHaveProperty('recurrenceGroupId');
+    expect(result).toHaveProperty('first');
+    expect(result.created).toBeGreaterThanOrEqual(1);
+    expect(result.first).toMatchObject({
+      spaceId,
+      title: 'Réunion récurrente',
+    });
+
+    const inDb = await prisma.reservation.findMany({
+      where: { recurrenceGroupId: result.recurrenceGroupId, deletedAt: null },
+    });
+    expect(inDb.length).toBe(result.created);
+  });
+
+  it('lance BadRequestException si recurrenceEndAt <= startDatetime', async () => {
+    const recurrenceEndAt = new Date('2026-03-31T09:00:00Z');
+
+    try {
+      await useCase.run(userId, {
+        spaceId,
+        startDatetime: baseStart.toISOString(),
+        endDatetime: baseEnd.toISOString(),
+        recurrenceRule: 'FREQ=DAILY',
+        recurrenceEndAt: recurrenceEndAt.toISOString(),
+      } as any);
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(BadRequestException);
+      const msg = e.response?.message ?? e.message ?? '';
+      expect(String(msg)).toContain('récurrence');
+    }
+  });
+
+  it('lance ConflictException avec date dans le message si une occurrence chevauche', async () => {
+    await useCase.run(userId, {
+      spaceId,
+      startDatetime: new Date('2026-04-02T10:00:00Z').toISOString(),
+      endDatetime: new Date('2026-04-02T11:00:00Z').toISOString(),
+      title: 'Résa fixe',
+    } as any);
+
+    const recurrenceEndAt = new Date('2026-04-05T23:59:59Z');
+
+    let thrown: any;
+    try {
+      await useCase.run(userId, {
+        spaceId,
+        startDatetime: baseStart.toISOString(),
+        endDatetime: baseEnd.toISOString(),
+        recurrenceRule: 'FREQ=DAILY',
+        recurrenceEndAt: recurrenceEndAt.toISOString(),
+        title: 'Série',
+      } as any);
+    } catch (e) {
+      thrown = e;
+    }
+
+    expect(thrown).toBeDefined();
+    expect(thrown).toBeInstanceOf(ConflictException);
+    expect(thrown.message).toContain('Impossible de créer la série');
+    expect(thrown.message).toContain('déjà réservé');
+    expect(thrown.message).toMatch(/\d/);
+  });
 });
 

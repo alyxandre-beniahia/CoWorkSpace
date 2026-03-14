@@ -20,6 +20,8 @@ export type CreateReservationBody = {
   isPrivate?: boolean;
   recurrenceRule?: string | null;
   recurrenceEndAt?: string | null;
+  /** Fuseau IANA pour récurrence (même heure locale, ex. Europe/Paris). */
+  timeZone?: string | null;
 };
 
 /** Payload pour PATCH /reservations/:id (modification). */

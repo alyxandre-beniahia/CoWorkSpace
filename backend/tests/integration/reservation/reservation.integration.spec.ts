@@ -204,6 +204,35 @@ describe('Reservation (intégration)', () => {
 
       expect(res.body.message).toContain('récurrence');
     });
+
+    it('retourne 409 si une occurrence de la série récurrente chevauche une réservation existante', async () => {
+      const start = new Date(Date.now() + 800 * 60 * 60 * 1000);
+      const end = new Date(start.getTime() + 60 * 60 * 1000);
+      const recurrenceEndAt = new Date(start.getTime() + 72 * 60 * 60 * 1000);
+
+      await createTestReservation(prisma!, {
+        userId: memberId,
+        spaceId: spaceIdC,
+        startDatetime: new Date(start.getTime() + 24 * 60 * 60 * 1000),
+        endDatetime: new Date(start.getTime() + 25 * 60 * 60 * 1000),
+      });
+
+      const res = await req
+        .post('/reservations')
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({
+          spaceId: spaceIdC,
+          startDatetime: toIso(start),
+          endDatetime: toIso(end),
+          recurrenceRule: 'FREQ=DAILY',
+          recurrenceEndAt: toIso(recurrenceEndAt),
+          title: `it-recur-409-${Date.now()}`,
+        })
+        .expect(409);
+
+      expect(res.body.message).toContain('Impossible de créer la série');
+      expect(res.body.message).toContain('déjà réservé');
+    });
   });
 
   describe('GET /reservations', () => {

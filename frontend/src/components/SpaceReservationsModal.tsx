@@ -25,6 +25,17 @@ import type {
 import { getWeekRange, toIsoString } from "@/lib/date";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import {
+  buildRecurrenceRule,
+  type RecurrenceFreq,
+} from "@/lib/recurrence";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type { ReservationCalendarItem };
 
@@ -65,6 +76,11 @@ export function SpaceReservationsModal({
   const [selectedReservation, setSelectedReservation] =
     useState<SelectedReservation | null>(null);
   const [isPrivate, setIsPrivate] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceFreq, setRecurrenceFreq] =
+    useState<RecurrenceFreq>("daily");
+  const [recurrenceWeekdays, setRecurrenceWeekdays] = useState<number[]>([]);
+  const [recurrenceEndAt, setRecurrenceEndAt] = useState<Date | null>(null);
 
   useEffect(() => {
     if (!open || !space || !token) {
@@ -72,6 +88,10 @@ export function SpaceReservationsModal({
       setReservations([]);
       setSelectedSlot(null);
       setSelectedReservation(null);
+      setIsRecurring(false);
+      setRecurrenceFreq("daily");
+      setRecurrenceWeekdays([]);
+      setRecurrenceEndAt(null);
       return;
     }
     const { start, end } = getWeekRange(currentWeekStart);
@@ -152,7 +172,7 @@ export function SpaceReservationsModal({
       start.setHours(hour, 0, 0, 0);
       const end = new Date(baseDate);
       end.setHours(hour + 1, 0, 0, 0);
-      const isBusy = reservations.some((r) => {
+      const isBusy = (reservations ?? []).some((r) => {
         const evStart = new Date(r.startDatetime);
         const evEnd = new Date(r.endDatetime);
         return evStart < end && evEnd > start;
@@ -199,12 +219,39 @@ export function SpaceReservationsModal({
         title: null,
         isPrivate,
       };
-      await api("/reservations", {
-        method: "POST",
-        token,
-        body: JSON.stringify(body),
-      });
-      toast.success("Créneau réservé");
+      const wantRecurrence =
+        isRecurring &&
+        recurrenceEndAt &&
+        recurrenceEndAt >= selectedSlot.start;
+      if (wantRecurrence) {
+        const rule = buildRecurrenceRule(
+          recurrenceFreq,
+          recurrenceFreq === "weekly" ? recurrenceWeekdays : []
+        );
+        if (rule) {
+          body.recurrenceRule = rule;
+          body.recurrenceEndAt = recurrenceEndAt.toISOString();
+          try {
+            const tz = Intl?.DateTimeFormat?.()?.resolvedOptions?.()?.timeZone;
+            if (tz) body.timeZone = tz;
+          } catch {
+            // ignorer si timezone indisponible
+          }
+        }
+      }
+      const result = await api<{ created?: number; first?: unknown }>(
+        "/reservations",
+        {
+          method: "POST",
+          token,
+          body: JSON.stringify(body),
+        }
+      );
+      if (result && typeof result === "object" && "created" in result && typeof result.created === "number") {
+        toast.success(`Série de ${result.created} créneaux réservée`);
+      } else {
+        toast.success("Créneau réservé");
+      }
       // Rafraîchir les réservations pour mettre à jour le calendrier
       const { start, end } = getWeekRange(currentWeekStart);
       const params = new URLSearchParams({
@@ -596,6 +643,107 @@ export function SpaceReservationsModal({
                   {submitting ? "Réservation…" : "Réserver ce créneau"}
                 </Button>
               </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="reservation-recurrence"
+                  checked={isRecurring}
+                  onChange={(e) => setIsRecurring(e.target.checked)}
+                  className="size-4 rounded border-input"
+                  aria-label="Répéter"
+                />
+                <Label
+                  htmlFor="reservation-recurrence"
+                  className="cursor-pointer text-muted-foreground font-normal"
+                >
+                  Répéter
+                </Label>
+              </div>
+              {isRecurring && selectedSlot && (
+                <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="recurrence-freq" className="text-foreground">
+                      Fréquence
+                    </Label>
+                    <Select
+                      value={recurrenceFreq}
+                      onValueChange={(v) =>
+                        setRecurrenceFreq(v as RecurrenceFreq)
+                      }
+                    >
+                      <SelectTrigger
+                        id="recurrence-freq"
+                        className="min-h-[44px] md:min-h-0 w-full max-w-[200px]"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="daily">Quotidien</SelectItem>
+                        <SelectItem value="weekly">Hebdomadaire</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {recurrenceFreq === "weekly" && (
+                    <div className="grid gap-2">
+                      <Label className="text-foreground">Jour(s)</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { i: 0, label: "Dim" },
+                          { i: 1, label: "Lun" },
+                          { i: 2, label: "Mar" },
+                          { i: 3, label: "Mer" },
+                          { i: 4, label: "Jeu" },
+                          { i: 5, label: "Ven" },
+                          { i: 6, label: "Sam" },
+                        ].map(({ i, label }) => (
+                          <label
+                            key={i}
+                            className="flex cursor-pointer items-center gap-1.5 text-sm text-muted-foreground"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={recurrenceWeekdays.includes(i)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setRecurrenceWeekdays((prev) =>
+                                    [...prev, i].sort((a, b) => a - b)
+                                  );
+                                } else {
+                                  setRecurrenceWeekdays((prev) =>
+                                    prev.filter((d) => d !== i)
+                                  );
+                                }
+                              }}
+                              className="size-4 rounded border-input"
+                            />
+                            {label}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="grid gap-2">
+                    <Label htmlFor="recurrence-end" className="text-foreground">
+                      Répéter jusqu&apos;au
+                    </Label>
+                    <input
+                      id="recurrence-end"
+                      type="date"
+                      min={selectedSlot.start.toISOString().slice(0, 10)}
+                      value={
+                        recurrenceEndAt
+                          ? recurrenceEndAt.toISOString().slice(0, 10)
+                          : ""
+                      }
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setRecurrenceEndAt(v ? new Date(v + "T23:59:59") : null);
+                      }}
+                      className="flex h-9 max-w-[200px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                    />
+                  </div>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
