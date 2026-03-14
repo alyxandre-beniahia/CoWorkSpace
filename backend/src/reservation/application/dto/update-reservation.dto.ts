@@ -1,4 +1,5 @@
 export class UpdateReservationDto {
+  seatId?: string | null;
   startDatetime?: string;
   endDatetime?: string;
   title?: string | null;

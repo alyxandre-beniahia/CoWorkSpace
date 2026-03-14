@@ -116,6 +116,24 @@ async function main() {
     });
   }
 
+  // Postes pour l'openspace (50 postes OS-01 à OS-50)
+  const openSpace = await prisma.space.findUnique({ where: { code: 'OPEN-SPACE' } });
+  if (openSpace) {
+    for (let i = 1; i <= 50; i++) {
+      const code = `OS-${String(i).padStart(2, '0')}`;
+      await prisma.seat.upsert({
+        where: {
+          spaceId_code: { spaceId: openSpace.id, code },
+        },
+        update: {},
+        create: {
+          spaceId: openSpace.id,
+          code,
+        },
+      });
+    }
+  }
+
   console.log('Seed OK: rôles admin/member et utilisateurs admin@test.com / member@test.com (mdp: password123)');
 }
 

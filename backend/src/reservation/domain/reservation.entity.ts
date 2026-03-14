@@ -7,6 +7,8 @@ export type ReservationListItem = {
   id: string;
   spaceId: string;
   spaceName: string;
+  seatId: string | null;
+  seatCode: string | null;
   userId: string;
   startDatetime: Date;
   endDatetime: Date;
@@ -25,6 +27,7 @@ export type ReservationWithDetails = ReservationListItem & {
 
 export type CreateReservationInput = {
   spaceId: string;
+  seatId?: string | null;
   userId: string;
   startDatetime: Date;
   endDatetime: Date;
@@ -36,6 +39,7 @@ export type CreateReservationInput = {
 };
 
 export type UpdateReservationInput = {
+  seatId?: string | null;
   startDatetime?: Date;
   endDatetime?: Date;
   title?: string | null;

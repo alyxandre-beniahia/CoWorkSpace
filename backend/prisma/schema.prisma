@@ -117,9 +117,29 @@ model Space {
   updatedAt   DateTime    @updatedAt
 
   reservations     Reservation[]
+  seats            Seat[]
   spaceEquipements SpaceEquipement[]
 
   @@index([name])
+}
+
+// ---------------------------------------------------------------------------
+// Postes (sièges) dans un espace (ex. openspace avec N postes)
+// ---------------------------------------------------------------------------
+model Seat {
+  id        String   @id @default(cuid())
+  spaceId   String
+  code      String   // ex. "OS-01", "A42" pour affichage et tri
+  positionX Float?
+  positionY Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
+
+  @@unique([spaceId, code])
+  @@index([spaceId])
 }
 
 // ---------------------------------------------------------------------------
@@ -170,10 +190,13 @@ model Reservation {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   spaceId String
   space  Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  seatId  String?
+  seat   Seat?  @relation(fields: [seatId], references: [id], onDelete: SetNull)
 
   notificationLogs NotificationLog[]
 
   @@index([spaceId, startDatetime, endDatetime]) // calendrier + détection des chevauchements
+  @@index([seatId, startDatetime, endDatetime]) // chevauchement par poste
   @@index([userId])
 }
 

@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 export type CreateTestReservationOverrides = {
   userId?: string;
   spaceId?: string;
+  seatId?: string | null;
   startDatetime?: Date;
   endDatetime?: Date;
   title?: string | null;
@@ -31,6 +32,7 @@ export async function createTestReservation(
     data: {
       userId: overrides.userId,
       spaceId: overrides.spaceId,
+      seatId: overrides.seatId ?? null,
       startDatetime: start,
       endDatetime: end,
       title,

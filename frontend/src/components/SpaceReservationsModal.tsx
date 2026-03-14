@@ -21,6 +21,7 @@ import type {
   ReservationCalendarItem,
   CreateReservationBody,
   UpdateReservationBody,
+  SeatItem,
 } from "@/types/reservation";
 import { getWeekRange, toIsoString } from "@/lib/date";
 import { useAuth } from "@/contexts/AuthContext";
@@ -81,6 +82,10 @@ export function SpaceReservationsModal({
     useState<RecurrenceFreq>("daily");
   const [recurrenceWeekdays, setRecurrenceWeekdays] = useState<number[]>([]);
   const [recurrenceEndAt, setRecurrenceEndAt] = useState<Date | null>(null);
+  const [seats, setSeats] = useState<SeatItem[]>([]);
+  const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
+
+  const isOpenSpace = space?.type === "OPEN_SPACE";
 
   useEffect(() => {
     if (!open || !space || !token) {
@@ -88,11 +93,21 @@ export function SpaceReservationsModal({
       setReservations([]);
       setSelectedSlot(null);
       setSelectedReservation(null);
+      setSeats([]);
+      setSelectedSeatId(null);
       setIsRecurring(false);
       setRecurrenceFreq("daily");
       setRecurrenceWeekdays([]);
       setRecurrenceEndAt(null);
       return;
+    }
+    if (space.type === "OPEN_SPACE") {
+      api<SeatItem[]>(`/spaces/${space.id}/seats`, { token })
+        .then(setSeats)
+        .catch(() => setSeats([]));
+    } else {
+      setSeats([]);
+      setSelectedSeatId(null);
     }
     const { start, end } = getWeekRange(currentWeekStart);
     const params = new URLSearchParams({
@@ -130,9 +145,12 @@ export function SpaceReservationsModal({
               ? "hsl(var(--primary-foreground))"
               : "hsl(var(--destructive-foreground))";
 
+            const title = item.seatCode
+              ? `${item.title ?? "Réservation"} – ${item.seatCode}`
+              : (item.title ?? item.effectiveTitle ?? "Réservation");
             return {
               id: item.id,
-              title: item.effectiveTitle ?? "Réservation",
+              title,
               start: item.startDatetime,
               end: item.endDatetime,
               display: "block",
@@ -166,13 +184,16 @@ export function SpaceReservationsModal({
   const daySlots: HourSlot[] = useMemo(() => {
     const baseDate = selectedDate;
     const slots: HourSlot[] = [];
-    // créneaux d'1h de 08h à 20h (exclu)
+    const relevantReservations =
+      isOpenSpace && selectedSeatId
+        ? (reservations ?? []).filter((r) => r.seatId === selectedSeatId)
+        : reservations ?? [];
     for (let hour = 8; hour < 20; hour++) {
       const start = new Date(baseDate);
       start.setHours(hour, 0, 0, 0);
       const end = new Date(baseDate);
       end.setHours(hour + 1, 0, 0, 0);
-      const isBusy = (reservations ?? []).some((r) => {
+      const isBusy = relevantReservations.some((r) => {
         const evStart = new Date(r.startDatetime);
         const evEnd = new Date(r.endDatetime);
         return evStart < end && evEnd > start;
@@ -180,7 +201,7 @@ export function SpaceReservationsModal({
       slots.push({ start, end, isBusy });
     }
     return slots;
-  }, [reservations, selectedDate]);
+  }, [reservations, selectedDate, isOpenSpace, selectedSeatId]);
 
   const { badgeLabel, badgeVariant } = useMemo(() => {
     if (daySlots.length === 0) {
@@ -210,6 +231,10 @@ export function SpaceReservationsModal({
 
   async function handleCreateReservation() {
     if (!space || !token || !selectedSlot) return;
+    if (isOpenSpace && !selectedSeatId) {
+      toast.error("Veuillez sélectionner un poste pour cet open space.");
+      return;
+    }
     setSubmitting(true);
     try {
       const body: CreateReservationBody = {
@@ -219,6 +244,7 @@ export function SpaceReservationsModal({
         title: null,
         isPrivate,
       };
+      if (selectedSeatId) body.seatId = selectedSeatId;
       const wantRecurrence =
         isRecurring &&
         recurrenceEndAt &&
@@ -288,10 +314,13 @@ export function SpaceReservationsModal({
           const textColor = isOwner
             ? "hsl(var(--primary-foreground))"
             : "hsl(var(--destructive-foreground))";
+          const title = item.seatCode
+            ? `${item.title ?? "Réservation"} – ${item.seatCode}`
+            : (item.title ?? item.effectiveTitle ?? "Réservation");
 
           return {
             id: item.id,
-            title: item.effectiveTitle ?? "Réservation",
+            title,
             start: item.startDatetime,
             end: item.endDatetime,
             display: "block",
@@ -366,10 +395,13 @@ export function SpaceReservationsModal({
           const textColor = isOwner
             ? "hsl(var(--primary-foreground))"
             : "hsl(var(--destructive-foreground))";
+          const title = item.seatCode
+            ? `${item.title ?? "Réservation"} – ${item.seatCode}`
+            : (item.title ?? item.effectiveTitle ?? "Réservation");
 
           return {
             id: item.id,
-            title: item.effectiveTitle ?? "Réservation",
+            title,
             start: item.startDatetime,
             end: item.endDatetime,
             display: "block",
@@ -442,10 +474,13 @@ export function SpaceReservationsModal({
           const textColor = isOwner
             ? "hsl(var(--primary-foreground))"
             : "hsl(var(--destructive-foreground))";
+          const title = item.seatCode
+            ? `${item.title ?? "Réservation"} – ${item.seatCode}`
+            : (item.title ?? item.effectiveTitle ?? "Réservation");
 
           return {
             id: item.id,
-            title: item.effectiveTitle ?? "Réservation",
+            title,
             start: item.startDatetime,
             end: item.endDatetime,
             display: "block",
@@ -564,14 +599,21 @@ export function SpaceReservationsModal({
                     selectable
                     editableEvents
                     onSelectSlot={(slot) => {
-                      // Empêche de sélectionner un créneau qui chevauche une réservation existante
-                      const overlapsBusy = reservations.some((r) => {
+                      if (isOpenSpace && !selectedSeatId) {
+                        toast.error("Sélectionnez d'abord un poste.");
+                        return;
+                      }
+                      const relevantReservations =
+                        isOpenSpace && selectedSeatId
+                          ? reservations.filter((r) => r.seatId === selectedSeatId)
+                          : reservations;
+                      const overlapsBusy = relevantReservations.some((r) => {
                         const start = new Date(r.startDatetime);
                         const end = new Date(r.endDatetime);
                         return start < slot.end && end > slot.start;
                       });
                       if (overlapsBusy) {
-                        toast.error("Ce créneau est déjà réservé");
+                        toast.error("Ce créneau est déjà réservé pour ce poste.");
                         return;
                       }
                       setSelectedSlot(slot);
@@ -606,6 +648,31 @@ export function SpaceReservationsModal({
             </div>
           </div>
 
+          {isOpenSpace && seats.length > 0 && (
+            <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm">
+              <Label htmlFor="seat-select" className="font-medium text-foreground">
+                Poste
+              </Label>
+              <Select
+                value={selectedSeatId ?? ""}
+                onValueChange={(v) => setSelectedSeatId(v || null)}
+              >
+                <SelectTrigger
+                  id="seat-select"
+                  className="min-h-[44px] md:min-h-0 w-full max-w-[200px]"
+                >
+                  <SelectValue placeholder="Choisir un poste" />
+                </SelectTrigger>
+                <SelectContent>
+                  {seats.map((seat) => (
+                    <SelectItem key={seat.id} value={seat.id}>
+                      {seat.code}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm">
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-2">
@@ -637,7 +704,11 @@ export function SpaceReservationsModal({
                 </div>
                 <Button
                   className="min-w-[180px]"
-                  disabled={!selectedSlot || submitting}
+                  disabled={
+                    !selectedSlot ||
+                    submitting ||
+                    (isOpenSpace && !selectedSeatId)
+                  }
                   onClick={handleCreateReservation}
                 >
                   {submitting ? "Réservation…" : "Réserver ce créneau"}

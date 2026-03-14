@@ -1,19 +1,31 @@
+/** Poste (siège) dans un espace (ex. openspace). */
+export type SeatItem = {
+  id: string;
+  spaceId: string;
+  code: string;
+  positionX: number | null;
+  positionY: number | null;
+};
+
 /** Élément réservation tel que retourné par GET /reservations (liste / calendrier). */
 export type ReservationCalendarItem = {
   id: string;
   spaceId: string;
+  seatId: string | null;
+  seatCode: string | null;
   userId: string;
   startDatetime: string;
   endDatetime: string;
   isPrivate: boolean;
   title: string | null;
-  effectiveTitle: string | null;
+  effectiveTitle?: string | null;
   isOwner: boolean;
 };
 
 /** Payload pour POST /reservations (création). */
 export type CreateReservationBody = {
   spaceId: string;
+  seatId?: string | null;
   startDatetime: string;
   endDatetime: string;
   title?: string | null;
@@ -26,6 +38,7 @@ export type CreateReservationBody = {
 
 /** Payload pour PATCH /reservations/:id (modification). */
 export type UpdateReservationBody = {
+  seatId?: string | null;
   startDatetime?: string;
   endDatetime?: string;
   title?: string | null;

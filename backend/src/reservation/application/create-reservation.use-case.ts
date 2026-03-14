@@ -47,6 +47,8 @@ export class CreateReservationUseCase {
           dto.spaceId,
           occ.startDatetime,
           occ.endDatetime,
+          undefined,
+          dto.seatId ?? null,
         );
         if (hasOverlap) {
           const dateLisible = occ.startDatetime.toLocaleString('fr-FR', {
@@ -61,6 +63,7 @@ export class CreateReservationUseCase {
 
       const inputs: CreateReservationInput[] = occurrences.map((occ) => ({
         spaceId: dto.spaceId,
+        seatId: dto.seatId ?? null,
         userId,
         startDatetime: occ.startDatetime,
         endDatetime: occ.endDatetime,
@@ -79,6 +82,8 @@ export class CreateReservationUseCase {
       dto.spaceId,
       start,
       end,
+      undefined,
+      dto.seatId ?? null,
     );
 
     if (hasOverlap) {
@@ -87,6 +92,7 @@ export class CreateReservationUseCase {
 
     return this.reservationRepository.create({
       spaceId: dto.spaceId,
+      seatId: dto.seatId ?? null,
       userId,
       startDatetime: start,
       endDatetime: end,

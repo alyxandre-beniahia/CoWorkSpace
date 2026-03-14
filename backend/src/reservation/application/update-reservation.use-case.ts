@@ -9,6 +9,7 @@ export class UpdateReservationUseCase {
 
   async run(reservationId: string, userId: string, dto: UpdateReservationDto) {
     const input: UpdateReservationInput = {
+      ...(dto.seatId !== undefined && { seatId: dto.seatId ?? null }),
       ...(dto.startDatetime && { startDatetime: new Date(dto.startDatetime) }),
       ...(dto.endDatetime && { endDatetime: new Date(dto.endDatetime) }),
       ...(dto.title !== undefined && { title: dto.title }),
@@ -33,11 +34,13 @@ export class UpdateReservationUseCase {
       throw new ConflictException('La date de fin doit être après la date de début.');
     }
 
+    const effectiveSeatId = input.seatId !== undefined ? input.seatId : existing.seatId;
     const hasOverlap = await this.reservationRepository.hasOverlap(
       existing.spaceId,
       start,
       end,
       reservationId,
+      effectiveSeatId ?? null,
     );
 
     if (hasOverlap) {

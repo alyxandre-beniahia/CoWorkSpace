@@ -9,6 +9,8 @@ import type {
 export type ReservationCalendarItem = {
   id: string;
   spaceId: string;
+  seatId: string | null;
+  seatCode: string | null;
   userId: string;
   startDatetime: Date;
   endDatetime: Date;
@@ -24,7 +26,13 @@ export interface IReservationRepository {
   update(id: string, input: UpdateReservationInput): Promise<ReservationWithDetails | null>;
   softDelete(id: string): Promise<boolean>;
   softDeleteByRecurrenceGroupId(recurrenceGroupId: string): Promise<number>;
-  hasOverlap(spaceId: string, start: Date, end: Date, excludeReservationId?: string): Promise<boolean>;
+  hasOverlap(
+    spaceId: string,
+    start: Date,
+    end: Date,
+    excludeReservationId?: string,
+    seatId?: string | null,
+  ): Promise<boolean>;
   listForCalendar(params: {
     spaceId?: string;
     start: Date;

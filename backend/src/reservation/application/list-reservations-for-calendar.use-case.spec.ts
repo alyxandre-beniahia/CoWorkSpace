@@ -21,6 +21,8 @@ describe('ListReservationsForCalendarUseCase', () => {
       {
         id: 'r1',
         spaceId: 's1',
+        seatId: null,
+        seatCode: null,
         userId: 'owner',
         startDatetime: new Date(),
         endDatetime: new Date(),

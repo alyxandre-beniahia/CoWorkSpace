@@ -20,6 +20,9 @@ describe('Reservation (intégration)', () => {
   let spaceId: string;
   let spaceIdB: string;
   let spaceIdC: string;
+  let openSpaceId: string;
+  let openSpaceSeat1Id: string;
+  let openSpaceSeat2Id: string;
 
   beforeAll(async () => {
     const testApp = await createTestApp();
@@ -63,6 +66,23 @@ describe('Reservation (intégration)', () => {
     });
     if (!spaceC) throw new Error('Espace SR-C introuvable. Exécutez le seed.');
     spaceIdC = spaceC.id;
+
+    const openSpace = await prisma!.space.findUnique({
+      where: { code: 'OPEN-SPACE' },
+      select: { id: true },
+    });
+    if (!openSpace) throw new Error('Espace OPEN-SPACE introuvable. Exécutez le seed.');
+    openSpaceId = openSpace.id;
+
+    const seats = await prisma!.seat.findMany({
+      where: { spaceId: openSpaceId },
+      orderBy: { code: 'asc' },
+      take: 2,
+      select: { id: true },
+    });
+    if (seats.length < 2) throw new Error('Au moins 2 postes requis pour l\'openspace. Exécutez le seed.');
+    openSpaceSeat1Id = seats[0].id;
+    openSpaceSeat2Id = seats[1].id;
   });
 
   afterAll(async () => {
@@ -154,6 +174,92 @@ describe('Reservation (intégration)', () => {
         .expect(409);
 
       expect(res.body.message).toContain('chevauche');
+    });
+
+    describe('réservation par poste (openspace)', () => {
+      it('crée une réservation avec seatId sur un poste', async () => {
+        const start = new Date(Date.now() + 400 * 60 * 60 * 1000);
+        const end = new Date(start.getTime() + 60 * 60 * 1000);
+
+        const res = await req
+          .post('/reservations')
+          .set('Authorization', `Bearer ${memberToken}`)
+          .send({
+            spaceId: openSpaceId,
+            seatId: openSpaceSeat1Id,
+            startDatetime: toIso(start),
+            endDatetime: toIso(end),
+            title: `it-seat-${Date.now()}`,
+          })
+          .expect(201);
+
+        expect(res.body).toMatchObject({
+          spaceId: openSpaceId,
+          seatId: openSpaceSeat1Id,
+          seatCode: 'OS-01',
+          title: expect.stringContaining('it-seat-'),
+        });
+      });
+
+      it('retourne 409 si même poste et même créneau', async () => {
+        const start = new Date(Date.now() + 500 * 60 * 60 * 1000);
+        const end = new Date(start.getTime() + 60 * 60 * 1000);
+
+        await createTestReservation(prisma!, {
+          userId: memberId,
+          spaceId: openSpaceId,
+          seatId: openSpaceSeat1Id,
+          startDatetime: start,
+          endDatetime: end,
+          title: `it-seat-conflict-${Date.now()}`,
+        });
+
+        const res = await req
+          .post('/reservations')
+          .set('Authorization', `Bearer ${memberToken}`)
+          .send({
+            spaceId: openSpaceId,
+            seatId: openSpaceSeat1Id,
+            startDatetime: toIso(start),
+            endDatetime: toIso(end),
+            title: `it-seat-conflict-2-${Date.now()}`,
+          })
+          .expect(409);
+
+        expect(res.body.message).toContain('chevauche');
+      });
+
+      it('crée une réservation sur un autre poste au même créneau', async () => {
+        const start = new Date(Date.now() + 600 * 60 * 60 * 1000);
+        const end = new Date(start.getTime() + 60 * 60 * 1000);
+
+        await createTestReservation(prisma!, {
+          userId: memberId,
+          spaceId: openSpaceId,
+          seatId: openSpaceSeat1Id,
+          startDatetime: start,
+          endDatetime: end,
+          title: `it-seat-other-${Date.now()}`,
+        });
+
+        const res = await req
+          .post('/reservations')
+          .set('Authorization', `Bearer ${memberToken}`)
+          .send({
+            spaceId: openSpaceId,
+            seatId: openSpaceSeat2Id,
+            startDatetime: toIso(start),
+            endDatetime: toIso(end),
+            title: `it-seat-other-2-${Date.now()}`,
+          })
+          .expect(201);
+
+        expect(res.body).toMatchObject({
+          spaceId: openSpaceId,
+          seatId: openSpaceSeat2Id,
+          seatCode: 'OS-02',
+        });
+      });
     });
 
     it('crée une réservation récurrente', async () => {

@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import type { SpaceListFilters } from '../domain/space-list.filters';
 import type {
   ISpaceRepository,
+  SeatListItem,
   SpaceListItem,
   SpaceWithEquipements,
 } from '../domain/space.repository.interface';
@@ -63,5 +64,19 @@ export class SpaceRepository implements ISpaceRepository {
       positionY: space.positionY,
       equipements: space.spaceEquipements.map((se) => ({ name: se.equipement.name })),
     };
+  }
+
+  async findSeatsBySpaceId(spaceId: string): Promise<SeatListItem[]> {
+    const seats = await this.prisma.seat.findMany({
+      where: { spaceId },
+      orderBy: { code: 'asc' },
+    });
+    return seats.map((s) => ({
+      id: s.id,
+      spaceId: s.spaceId,
+      code: s.code,
+      positionX: s.positionX,
+      positionY: s.positionY,
+    }));
   }
 }

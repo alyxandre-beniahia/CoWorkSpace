@@ -23,7 +23,16 @@ export type SpaceListItem = {
   equipements: string[];
 };
 
+export type SeatListItem = {
+  id: string;
+  spaceId: string;
+  code: string;
+  positionX: number | null;
+  positionY: number | null;
+};
+
 export interface ISpaceRepository {
   list(filters: SpaceListFilters): Promise<SpaceListItem[]>;
   findById(id: string): Promise<SpaceWithEquipements | null>;
+  findSeatsBySpaceId(spaceId: string): Promise<SeatListItem[]>;
 }

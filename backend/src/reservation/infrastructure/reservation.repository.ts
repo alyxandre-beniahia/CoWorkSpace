@@ -36,6 +36,7 @@ export class ReservationRepository implements IReservationRepository {
       where,
       include: {
         space: true,
+        seat: true,
         user: { select: { id: true } },
       },
       orderBy: { startDatetime: 'asc' },
@@ -48,6 +49,8 @@ export class ReservationRepository implements IReservationRepository {
         id: r.id,
         spaceId: r.spaceId,
         spaceName: r.space.name,
+        seatId: r.seatId,
+        seatCode: r.seat?.code ?? null,
         userId: r.userId,
         startDatetime: r.startDatetime,
         endDatetime: r.endDatetime,
@@ -64,6 +67,7 @@ export class ReservationRepository implements IReservationRepository {
       where: { id, deletedAt: null },
       include: {
         space: true,
+        seat: true,
         user: { select: { id: true, firstname: true, lastname: true, email: true } },
       },
     });
@@ -75,6 +79,8 @@ export class ReservationRepository implements IReservationRepository {
       id: r.id,
       spaceId: r.spaceId,
       spaceName: r.space.name,
+      seatId: r.seatId,
+      seatCode: r.seat?.code ?? null,
       userId: r.userId,
       startDatetime: r.startDatetime,
       endDatetime: r.endDatetime,
@@ -91,6 +97,7 @@ export class ReservationRepository implements IReservationRepository {
     const r = await this.prisma.reservation.create({
       data: {
         spaceId: input.spaceId,
+        seatId: input.seatId ?? null,
         userId: input.userId,
         startDatetime: input.startDatetime,
         endDatetime: input.endDatetime,
@@ -102,6 +109,7 @@ export class ReservationRepository implements IReservationRepository {
       },
       include: {
         space: true,
+        seat: true,
         user: { select: { id: true, firstname: true, lastname: true, email: true } },
       },
     });
@@ -110,6 +118,8 @@ export class ReservationRepository implements IReservationRepository {
       id: r.id,
       spaceId: r.spaceId,
       spaceName: r.space.name,
+      seatId: r.seatId,
+      seatCode: r.seat?.code ?? null,
       userId: r.userId,
       startDatetime: r.startDatetime,
       endDatetime: r.endDatetime,
@@ -135,6 +145,7 @@ export class ReservationRepository implements IReservationRepository {
     const r = await this.prisma.reservation.updateMany({
       where: { id, deletedAt: null },
       data: {
+        ...(input.seatId !== undefined && { seatId: input.seatId }),
         ...(input.startDatetime && { startDatetime: input.startDatetime }),
         ...(input.endDatetime && { endDatetime: input.endDatetime }),
         ...(input.title !== undefined && { title: input.title }),
@@ -169,14 +180,19 @@ export class ReservationRepository implements IReservationRepository {
     start: Date,
     end: Date,
     excludeReservationId?: string,
+    seatId?: string | null,
   ): Promise<boolean> {
     const where: Prisma.ReservationWhereInput = {
       spaceId,
       deletedAt: null,
-      OR: [
+      AND: [
         { startDatetime: { lt: end }, endDatetime: { gt: start } },
       ],
     };
+    if (seatId != null && seatId !== '') {
+      where.seatId = seatId;
+    }
+    // si seatId null/undefined : conflit avec toute résa sur ce space (espace entier)
     if (excludeReservationId) {
       where.id = { not: excludeReservationId };
     }
@@ -204,6 +220,8 @@ export class ReservationRepository implements IReservationRepository {
       select: {
         id: true,
         spaceId: true,
+        seatId: true,
+        seat: { select: { code: true } },
         userId: true,
         startDatetime: true,
         endDatetime: true,
@@ -216,6 +234,8 @@ export class ReservationRepository implements IReservationRepository {
     return items.map((r) => ({
       id: r.id,
       spaceId: r.spaceId,
+      seatId: r.seatId,
+      seatCode: r.seat?.code ?? null,
       userId: r.userId,
       startDatetime: r.startDatetime,
       endDatetime: r.endDatetime,
