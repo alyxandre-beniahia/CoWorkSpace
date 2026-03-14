@@ -114,7 +114,7 @@ export async function createTestEquipement(
 ): Promise<{ equipement: { id: string; name: string } }> {
   const equipementName = name ?? `it-${Date.now()}-${randomBytes(4).toString('hex')}`;
   const equipement = await prisma.equipement.create({
-    data: { name: equipementName },
+    data: { name: equipementName, quantity: 10 },
     select: { id: true, name: true },
   });
   return { equipement };

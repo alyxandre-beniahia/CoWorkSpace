@@ -23,7 +23,7 @@ export function LoginPage() {
   }
 
   if (user) {
-    const target = user.role.slug === 'admin' ? '/admin' : '/espaces'
+    const target = user.role.slug === 'admin' ? '/admin' : '/'
     return <Navigate to={target} replace />
   }
 
@@ -36,7 +36,7 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       const me = await login(email.trim(), password)
-      const target = me.role.slug === 'admin' ? '/admin' : '/espaces'
+      const target = me.role.slug === 'admin' ? '/admin' : '/'
       navigate(target, { replace: true })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Connexion impossible')

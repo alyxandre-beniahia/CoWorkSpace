@@ -138,14 +138,14 @@ describe('Parcours admin (fonctionnel)', () => {
     await req.get('/admin/membres').expect(401);
   });
 
-  it('PATCH /admin/espaces/:id avec id inexistant retourne erreur (500 - Prisma record not found)', async () => {
+  it('PATCH /admin/espaces/:id avec id inexistant retourne 404', async () => {
     const adminToken = await getAuthToken(req, 'admin@test.com', 'password123');
     const fakeId = 'clnonexistentid12345678901234';
     await req
       .patch(`/admin/espaces/${fakeId}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ name: 'Test' })
-      .expect(500);
+      .expect(404);
   });
 
   it('404 : PATCH /admin/membres/:id/valider avec id inexistant', async () => {
@@ -163,6 +163,42 @@ describe('Parcours admin (fonctionnel)', () => {
       .get('/admin/espaces')
       .set('Authorization', `Bearer ${memberToken}`)
       .expect(403);
+  });
+
+  it('admin : équipements (list, create, update, delete)', async () => {
+    const adminToken = await getAuthToken(req, 'admin@test.com', 'password123');
+
+    const listRes = await req
+      .get('/admin/equipements')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(Array.isArray(listRes.body)).toBe(true);
+
+    const createRes = await req
+      .post('/admin/equipements')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Équipement fonctionnel' })
+      .expect(201);
+    const equipementId = createRes.body.id;
+    expect(createRes.body.name).toBe('Équipement fonctionnel');
+
+    await req
+      .patch(`/admin/equipements/${equipementId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Équipement modifié' })
+      .expect(200);
+
+    const listAfter = await req
+      .get('/admin/equipements')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    const updated = listAfter.body.find((e: { id: string }) => e.id === equipementId);
+    expect(updated?.name).toBe('Équipement modifié');
+
+    await req
+      .delete(`/admin/equipements/${equipementId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
   });
 
   it('admin : actif (désactiver puis réactiver un membre)', async () => {

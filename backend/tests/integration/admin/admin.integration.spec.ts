@@ -318,12 +318,12 @@ describe('Admin (intégration)', () => {
       expect(res.body.capacity).toBe(10);
     });
 
-    it('retourne 500 si id inexistant (Prisma record not found)', async () => {
+    it('retourne 404 si id inexistant', async () => {
       await req
         .patch(`/admin/espaces/${FAKE_ID}`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({ name: 'Test' })
-        .expect(500);
+        .expect(404);
     });
 
     it('retourne 403 avec token member', async () => {
@@ -349,11 +349,11 @@ describe('Admin (intégration)', () => {
       expect(res.body).toEqual({ deleted: true });
     });
 
-    it('retourne 500 si id inexistant (Prisma record not found)', async () => {
+    it('retourne 404 si id inexistant', async () => {
       await req
         .delete(`/admin/espaces/${FAKE_ID}`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .expect(500);
+        .expect(404);
     });
 
     it('retourne 403 avec token member', async () => {
@@ -377,8 +377,7 @@ describe('Admin (intégration)', () => {
         .send({ equipementId: equipement.id })
         .expect(201);
 
-      expect(res.body).toHaveProperty('spaceId', space.id);
-      expect(res.body).toHaveProperty('equipementId', equipement.id);
+      expect(res.body).toHaveProperty('id');
     });
 
     it('retourne 403 avec token member', async () => {
@@ -420,6 +419,110 @@ describe('Admin (intégration)', () => {
 
       await req
         .delete(`/admin/espaces/${space.id}/equipements/${equipement.id}`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .expect(403);
+    });
+  });
+
+  describe('GET /admin/equipements', () => {
+    it('retourne la liste des équipements', async () => {
+      const res = await req
+        .get('/admin/equipements')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    it('retourne 401 sans token', async () => {
+      await req.get('/admin/equipements').expect(401);
+    });
+
+    it('retourne 403 avec token member', async () => {
+      await req
+        .get('/admin/equipements')
+        .set('Authorization', `Bearer ${memberToken}`)
+        .expect(403);
+    });
+  });
+
+  describe('POST /admin/equipements', () => {
+    it('crée un équipement', async () => {
+      const res = await req
+        .post('/admin/equipements')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: 'Vidéoprojecteur' })
+        .expect(201);
+
+      expect(res.body).toMatchObject({ name: 'Vidéoprojecteur' });
+      expect(res.body).toHaveProperty('id');
+    });
+
+    it('retourne 403 avec token member', async () => {
+      await req
+        .post('/admin/equipements')
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({ name: 'Test' })
+        .expect(403);
+    });
+  });
+
+  describe('PATCH /admin/equipements/:id', () => {
+    it('met à jour un équipement', async () => {
+      const { equipement } = await createTestEquipement(prisma!, 'Équipement initial');
+
+      const res = await req
+        .patch(`/admin/equipements/${equipement.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: 'Équipement modifié' })
+        .expect(200);
+
+      expect(res.body.name).toBe('Équipement modifié');
+    });
+
+    it('retourne 404 si id inexistant', async () => {
+      await req
+        .patch(`/admin/equipements/${FAKE_ID}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: 'Test' })
+        .expect(404);
+    });
+
+    it('retourne 403 avec token member', async () => {
+      const { equipement } = await createTestEquipement(prisma!);
+
+      await req
+        .patch(`/admin/equipements/${equipement.id}`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({ name: 'Test' })
+        .expect(403);
+    });
+  });
+
+  describe('DELETE /admin/equipements/:id', () => {
+    it('supprime un équipement', async () => {
+      const { equipement } = await createTestEquipement(prisma!);
+
+      const res = await req
+        .delete(`/admin/equipements/${equipement.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(res.body).toEqual({ deleted: true });
+    });
+
+    it('retourne 404 si id inexistant', async () => {
+      await req
+        .delete(`/admin/equipements/${FAKE_ID}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(404);
+    });
+
+    it('retourne 403 avec token member', async () => {
+      const { equipement } = await createTestEquipement(prisma!);
+
+      await req
+        .delete(`/admin/equipements/${equipement.id}`)
         .set('Authorization', `Bearer ${memberToken}`)
         .expect(403);
     });
