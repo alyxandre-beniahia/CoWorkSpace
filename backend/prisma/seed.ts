@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, SpaceType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -44,7 +44,7 @@ async function main() {
     },
   });
 
-  // Espaces : 1 open space (50 postes) + 4 salles de réunion
+  // Espaces : calibration pour SVG 1200×900 (schéma architectural)
   const spaces = [
     {
       code: 'OPEN-SPACE',
@@ -52,8 +52,8 @@ async function main() {
       type: 'OPEN_SPACE' as const,
       capacity: 50,
       description: 'Grand open space avec 50 postes en libre-service.',
-      positionX: 120,
-      positionY: 120,
+      positionX: 60,
+      positionY: 224,
     },
     {
       code: 'SR-A',
@@ -61,7 +61,7 @@ async function main() {
       type: 'MEETING_ROOM' as const,
       capacity: 6,
       description: 'Salle de réunion pour 6 personnes.',
-      positionX: 480,
+      positionX: 60,
       positionY: 60,
     },
     {
@@ -70,8 +70,8 @@ async function main() {
       type: 'MEETING_ROOM' as const,
       capacity: 8,
       description: 'Salle de réunion pour 8 personnes.',
-      positionX: 480,
-      positionY: 160,
+      positionX: 304,
+      positionY: 60,
     },
     {
       code: 'SR-C',
@@ -79,8 +79,8 @@ async function main() {
       type: 'MEETING_ROOM' as const,
       capacity: 10,
       description: 'Salle de réunion pour 10 personnes.',
-      positionX: 480,
-      positionY: 260,
+      positionX: 630,
+      positionY: 60,
     },
     {
       code: 'SR-D',
@@ -88,31 +88,51 @@ async function main() {
       type: 'MEETING_ROOM' as const,
       capacity: 12,
       description: 'Grande salle de réunion pour 12 personnes.',
-      positionX: 480,
-      positionY: 360,
+      positionX: 60,
+      positionY: 674,
+    },
+    {
+      code: 'CUISINE',
+      name: 'Cuisine',
+      type: 'OTHER' as const,
+      capacity: 1,
+      description: 'Espace détente',
+      positionX: 874,
+      positionY: 60,
+    },
+    {
+      code: 'RECEPTION',
+      name: 'Réception',
+      type: 'OTHER' as const,
+      capacity: 1,
+      description: 'Accueil',
+      positionX: 464,
+      positionY: 674,
+    },
+    {
+      code: 'SANITAIRES',
+      name: 'Sanitaires',
+      type: 'OTHER' as const,
+      capacity: 0,
+      description: 'WC + Douches',
+      positionX: 874,
+      positionY: 674,
     },
   ];
 
   for (const space of spaces) {
+    const data = {
+      name: space.name,
+      type: space.type as SpaceType,
+      capacity: space.capacity,
+      description: space.description,
+      positionX: space.positionX,
+      positionY: space.positionY,
+    };
     await prisma.space.upsert({
       where: { code: space.code },
-      update: {
-        name: space.name,
-        type: space.type,
-        capacity: space.capacity,
-        description: space.description,
-        positionX: space.positionX,
-        positionY: space.positionY,
-      },
-      create: {
-        name: space.name,
-        code: space.code,
-        type: space.type,
-        capacity: space.capacity,
-        description: space.description,
-        positionX: space.positionX,
-        positionY: space.positionY,
-      },
+      update: data,
+      create: { ...data, code: space.code },
     });
   }
 

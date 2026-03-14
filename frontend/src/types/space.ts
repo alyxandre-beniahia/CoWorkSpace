@@ -1,4 +1,4 @@
-export type SpaceType = 'MEETING_ROOM' | 'HOT_DESK' | 'OPEN_SPACE'
+export type SpaceType = 'MEETING_ROOM' | 'HOT_DESK' | 'OPEN_SPACE' | 'OTHER'
 export type SpaceStatus = 'AVAILABLE' | 'MAINTENANCE' | 'OCCUPIED'
 
 export type SpaceListItem = {
@@ -8,6 +8,8 @@ export type SpaceListItem = {
   type: SpaceType
   capacity: number
   status: SpaceStatus
+  positionX: number | null
+  positionY: number | null
   equipements: string[]
 }
 
@@ -24,6 +26,7 @@ export const SPACE_TYPE_LABELS: Record<SpaceType, string> = {
   MEETING_ROOM: 'Salle de réunion',
   HOT_DESK: 'Bureau',
   OPEN_SPACE: 'Open space',
+  OTHER: 'Autre',
 }
 
 export const SPACE_STATUS_LABELS: Record<SpaceStatus, string> = {
