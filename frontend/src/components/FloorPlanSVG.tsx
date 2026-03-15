@@ -2,6 +2,9 @@ import { useCallback, useRef, useState } from 'react'
 import { SPACE_STATUS_CLASS, SPACE_STATUS_LABELS } from '@/types/space'
 import type { SpaceType, SpaceStatus } from '@/types/space'
 
+/** Statut d’affichage sur le plan d’accueil : autre = gris, disponible = vert, réservé = orange, occupé = rouge. */
+export type PublicPlanStatus = 'other' | 'available' | 'reserved' | 'occupied'
+
 export type SpaceForPlan = {
   id: string
   name: string
@@ -12,6 +15,8 @@ export type SpaceForPlan = {
   positionX: number | null
   positionY: number | null
   description?: string | null
+  /** En mode public : détermine la couleur (autre / disponible / réservé / occupé). */
+  publicStatus?: PublicPlanStatus
 }
 
 type FloorPlanSVGProps = {
@@ -32,40 +37,34 @@ function getSpaceDimensions(space: SpaceForPlan): { w: number; h: number } {
   return { w: 224, h: 144 }
 }
 
-function getSpaceStyle(type: SpaceType, status: SpaceStatus, mode: 'admin' | 'public') {
+function getSpaceStyle(
+  type: SpaceType,
+  status: SpaceStatus,
+  mode: 'admin' | 'public',
+  publicStatus?: PublicPlanStatus
+) {
   const statusClass = SPACE_STATUS_CLASS[status]
-  const isOccupied = statusClass === 'bg-status-occupied'
-  const isUnavailable = statusClass === 'bg-status-unavailable'
 
   if (mode === 'public') {
-    if (statusClass === 'bg-status-available') {
-      return { fill: '#22c55e', stroke: '#16a34a' }
-    }
-    if (statusClass === 'bg-status-occupied') {
-      return { fill: '#f97316', stroke: '#ea580c' }
-    }
-    return { fill: '#ef4444', stroke: '#dc2626' }
+    const ps = publicStatus ?? (type === 'OTHER' ? 'other' : statusClass === 'bg-status-occupied' ? 'occupied' : 'available')
+    if (ps === 'other') return { fill: '#9ca3af', stroke: '#6b7280' }
+    if (ps === 'available') return { fill: '#22c55e', stroke: '#16a34a' }
+    if (ps === 'reserved') return { fill: '#f97316', stroke: '#ea580c' }
+    if (ps === 'occupied') return { fill: '#ef4444', stroke: '#dc2626' }
+    return { fill: '#22c55e', stroke: '#16a34a' }
   }
 
+  // Admin : pas de disponibilité (uniquement type) — nom + capacité à l'affichage
   if (type === 'OTHER') {
     return { fill: '#94a3b8', stroke: '#64748b' }
   }
   if (type === 'MEETING_ROOM' || type === 'HOT_DESK') {
-    return {
-      fill: isOccupied ? '#f97316' : isUnavailable ? '#94a3b8' : '#c084fc',
-      stroke: '#9333ea',
-    }
+    return { fill: '#c084fc', stroke: '#9333ea' }
   }
   if (type === 'OPEN_SPACE') {
-    return {
-      fill: isOccupied ? '#f97316' : isUnavailable ? '#94a3b8' : '#60a5fa',
-      stroke: '#2563eb',
-    }
+    return { fill: '#60a5fa', stroke: '#2563eb' }
   }
-  return {
-    fill: isOccupied ? '#f97316' : isUnavailable ? '#94a3b8' : '#4ade80',
-    stroke: '#16a34a',
-  }
+  return { fill: '#4ade80', stroke: '#16a34a' }
 }
 
 export function FloorPlanSVG({
@@ -175,7 +174,7 @@ function DraggableSpace({
   const x = space.positionX ?? 0
   const y = space.positionY ?? 0
   const { w, h } = getSpaceDimensions(space)
-  const style = getSpaceStyle(space.type, space.status, mode)
+  const style = getSpaceStyle(space.type, space.status, mode, space.publicStatus)
 
   const [dragState, setDragState] = useState<{
     isDragging: boolean
@@ -301,28 +300,34 @@ function DraggableSpace({
       >
         {space.name}
       </text>
-      <text
-        x={w / 2}
-        y={h / 2 + 8}
-        fontSize={14}
-        fill="white"
-        fillOpacity={0.9}
-        textAnchor="middle"
-      >
-        {space.type === 'OPEN_SPACE'
-          ? `${space.capacity} postes`
-          : `${space.capacity} personne${space.capacity > 1 ? 's' : ''}`}
-      </text>
-      <text
-        x={w / 2}
-        y={h / 2 + 28}
-        fontSize={12}
-        fill="white"
-        fillOpacity={0.8}
-        textAnchor="middle"
-      >
-        {SPACE_STATUS_LABELS[space.status]}
-      </text>
+      {space.type !== 'OTHER' && (
+        <text
+          x={w / 2}
+          y={h / 2 + 8}
+          fontSize={14}
+          fill="white"
+          fillOpacity={0.9}
+          textAnchor="middle"
+        >
+          {space.type === 'OPEN_SPACE'
+            ? `${space.capacity} postes`
+            : `${space.capacity} personne${space.capacity > 1 ? 's' : ''}`}
+        </text>
+      )}
+      {mode === 'public' && space.type !== 'OTHER' && (
+        <text
+          x={w / 2}
+          y={h / 2 + 28}
+          fontSize={12}
+          fill="white"
+          fillOpacity={0.8}
+          textAnchor="middle"
+        >
+          {space.publicStatus != null
+            ? { other: 'Autre', available: 'Disponible', reserved: 'Réservé', occupied: 'Occupé' }[space.publicStatus]
+            : SPACE_STATUS_LABELS[space.status]}
+        </text>
+      )}
     </g>
   )
 }

@@ -44,7 +44,29 @@ const SPACE_COLORS = [
   'hsl(199, 89%, 48%)',   // cyan
 ]
 
-function colorForSpaceId(spaceId: string): string {
+/** Normalise un nom pour la comparaison (minuscules, sans accents). */
+function normalizeSpaceName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+}
+
+/** Couleurs fixes par nom d'espace (noms du seed : Open space principal, Salle Réunion A/B/C). */
+const SPACE_NAME_COLORS: Record<string, string> = {
+  'open space principal': 'hsl(280, 67%, 47%)',   // violet
+  'salle reunion a': 'hsl(221, 83%, 53%)',         // bleu
+  'salle reunion b': 'hsl(25, 95%, 53%)',         // orange
+  'salle reunion c': 'hsl(47, 96%, 53%)',        // jaune
+}
+
+function colorForSpaceId(spaceId: string, spaceName?: string | null): string {
+  if (spaceName != null) {
+    const key = normalizeSpaceName(spaceName)
+    const fixed = SPACE_NAME_COLORS[key]
+    if (fixed) return fixed
+  }
   let hash = 0
   for (let i = 0; i < spaceId.length; i++) hash = (hash << 5) - hash + spaceId.charCodeAt(i)
   const index = (hash >>> 0) % SPACE_COLORS.length
@@ -90,7 +112,7 @@ export function AdminReservationCalendar() {
             item.isPrivate && !item.isOwner && !isAdmin
               ? 'Occupé'
               : (item.title ?? 'Réservation')
-          const color = colorForSpaceId(item.spaceId)
+          const color = colorForSpaceId(item.spaceId, item.spaceName)
 
           return {
             id: item.id,
@@ -150,7 +172,7 @@ export function AdminReservationCalendar() {
             <span key={s.id} className="flex items-center gap-1.5">
               <span
                 className="size-3 shrink-0 rounded-sm border border-white shadow-sm"
-                style={{ backgroundColor: colorForSpaceId(s.id) }}
+                style={{ backgroundColor: colorForSpaceId(s.id, s.name) }}
                 aria-hidden
               />
               <span>{s.name}</span>

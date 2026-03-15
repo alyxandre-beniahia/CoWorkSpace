@@ -1,14 +1,10 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
-import { FloorPlanSVG, type SpaceForPlan } from '@/components/FloorPlanSVG'
+import { FloorPlanSVG, type SpaceForPlan, type PublicPlanStatus } from '@/components/FloorPlanSVG'
 import type { SpaceDetail, SpaceListItem } from '@/types/space'
 import type { ReservationCalendarItem } from '@/types/reservation'
 import { getDayRange, toIsoString } from '@/lib/date'
 import { useAuth } from '@/contexts/AuthContext'
-
-type SpaceWithBusy = SpaceListItem & {
-  isBusyToday?: boolean
-}
 
 type HomeSpacesPlanProps = {
   onSelectSpace: (space: SpaceDetail) => void
@@ -16,44 +12,48 @@ type HomeSpacesPlanProps = {
 
 export function HomeSpacesPlan({ onSelectSpace }: HomeSpacesPlanProps) {
   const { token } = useAuth()
-  const [spaces, setSpaces] = useState<SpaceWithBusy[]>([])
+  const [spaces, setSpaces] = useState<SpaceListItem[]>([])
+  const [reservationsToday, setReservationsToday] = useState<ReservationCalendarItem[]>([])
 
   useEffect(() => {
     api<SpaceListItem[]>('/spaces')
-      .then((items) => {
-        const extended: SpaceWithBusy[] = items.map((s) => ({
-          ...s,
-          isBusyToday: false,
-        }))
-        setSpaces(extended)
-      })
-      .catch(() => {
-        setSpaces([])
-      })
+      .then(setSpaces)
+      .catch(() => setSpaces([]))
   }, [])
 
   useEffect(() => {
-    if (!token || spaces.length === 0) return
+    if (!token) return
     const today = new Date()
     const { start, end } = getDayRange(today)
     const params = new URLSearchParams({
       start: toIsoString(start),
       end: toIsoString(end),
+      forPlan: 'true',
     })
-    api<ReservationCalendarItem[]>(`/reservations?${params.toString()}`, {
-      token,
+    api<ReservationCalendarItem[]>(`/reservations?${params.toString()}`, { token })
+      .then(setReservationsToday)
+      .catch(() => setReservationsToday([]))
+  }, [token])
+
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(interval)
+  }, [])
+
+
+  function getPublicStatus(spaceId: string, type: string): PublicPlanStatus {
+    if (type === 'OTHER') return 'other'
+    const forSpace = reservationsToday.filter((r) => r.spaceId === spaceId)
+    const occupiedNow = forSpace.some((r) => {
+      const start = new Date(r.startDatetime).getTime()
+      const end = new Date(r.endDatetime).getTime()
+      return start <= now && now < end
     })
-      .then((items) => {
-        const busyBySpace = new Set(items.map((r) => r.spaceId))
-        setSpaces((prev) =>
-          prev.map((s) => ({
-            ...s,
-            isBusyToday: busyBySpace.has(s.id),
-          }))
-        )
-      })
-      .catch(() => {})
-  }, [token, spaces.length])
+    if (occupiedNow) return 'occupied'
+    if (forSpace.length > 0) return 'reserved'
+    return 'available'
+  }
 
   const spacesForPlan: SpaceForPlan[] = spaces.map((s) => ({
     id: s.id,
@@ -61,9 +61,10 @@ export function HomeSpacesPlan({ onSelectSpace }: HomeSpacesPlanProps) {
     code: s.code,
     type: s.type,
     capacity: s.capacity,
-    status: s.isBusyToday ? 'OCCUPIED' : s.status,
+    status: s.status,
     positionX: s.positionX,
     positionY: s.positionY,
+    publicStatus: getPublicStatus(s.id, s.type),
   }))
 
   async function handleSelectSpace(space: SpaceForPlan) {
@@ -83,11 +84,13 @@ export function HomeSpacesPlan({ onSelectSpace }: HomeSpacesPlanProps) {
           Vue plan des espaces pour aujourd&apos;hui — cliquez pour réserver
         </p>
       </div>
-      <FloorPlanSVG
-        spaces={spacesForPlan}
-        mode="public"
-        onSelectSpace={handleSelectSpace}
-      />
+      <div className="mx-auto w-full max-w-[1200px]">
+        <FloorPlanSVG
+          spaces={spacesForPlan}
+          mode="public"
+          onSelectSpace={handleSelectSpace}
+        />
+      </div>
     </div>
   )
 }

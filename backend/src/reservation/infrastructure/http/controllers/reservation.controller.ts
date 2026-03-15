@@ -76,6 +76,7 @@ export class ReservationController {
     @Query('to') to?: string,
     @Query('start') start?: string,
     @Query('end') end?: string,
+    @Query('forPlan') forPlan?: string,
     @Request() req?: AuthRequest,
   ) {
     const filters: ReservationListFilters = {};
@@ -89,7 +90,9 @@ export class ReservationController {
       filters.currentUserId = req.user.userId;
       filters.role = req.user.role;
     }
-    if (req?.user?.role !== 'admin' && !filters.userId && !filters.spaceId) {
+    // forPlan=true : retourner toutes les réservations sur la plage (pour le plan d'accueil, couleurs par espace)
+    const isForPlan = forPlan === 'true' || forPlan === '1';
+    if (req?.user?.role !== 'admin' && !filters.userId && !filters.spaceId && !isForPlan) {
       filters.userId = req!.user.userId;
     }
     return this.listReservationsUseCase.run(filters);

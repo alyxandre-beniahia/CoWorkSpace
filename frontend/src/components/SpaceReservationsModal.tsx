@@ -531,22 +531,23 @@ export function SpaceReservationsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[90vw] max-w-5xl sm:max-w-5xl">
-        <DialogHeader>
-          <DialogTitle className="flex flex-col gap-1 text-left">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex flex-col gap-0.5">
-                <span>{space.name}</span>
-                {space.code && (
-                  <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                    {space.code}
-                  </span>
-                )}
-              </div>
-              <Badge variant={badgeVariant}>{badgeLabel}</Badge>
+      <DialogContent className="flex max-h-[90vh] w-[90vw] max-w-5xl flex-col overflow-hidden sm:max-w-5xl">
+        <DialogHeader className="shrink-0 pr-10">
+          <DialogTitle className="flex flex-col gap-1.5 text-left">
+            <div className="flex flex-col gap-0.5">
+              <span>{space.name}</span>
+              {space.code && (
+                <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                  {space.code}
+                </span>
+              )}
             </div>
+            <Badge variant={badgeVariant} className="w-fit">
+              {badgeLabel}
+            </Badge>
           </DialogTitle>
         </DialogHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="space-y-6">
           <div className="grid gap-6 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.9fr)]">
             <div className="space-y-3 text-sm text-muted-foreground">
@@ -925,6 +926,7 @@ export function SpaceReservationsModal({
               </div>
             </div>
           </div>
+        </div>
         </div>
       </DialogContent>
     </Dialog>
