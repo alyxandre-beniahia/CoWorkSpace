@@ -121,8 +121,9 @@ export function AdminReservationCalendar() {
     <Card>
       <CardHeader>
         <CardTitle>Planning des réservations</CardTitle>
-        <CardDescription>
-          Vue d&apos;ensemble des réservations. Filtrez par espace. Glissez sur un créneau libre pour créer une réservation.
+        <CardDescription className="space-y-1">
+          <span className="block">Vue d&apos;ensemble des réservations. Filtrez par espace. Glissez sur un créneau libre pour créer une réservation.</span>
+          <span className="block">Pour des réservations plus précises, aller sur la page d&apos;accueil.</span>
         </CardDescription>
         <div className="pt-2">
           <Select
@@ -153,6 +154,7 @@ export function AdminReservationCalendar() {
           height={630}
           slotEventOverlap={false}
           selectable
+          selectOverlap
           editableEvents={false}
           onDatesSet={(start) => setWeekStart(getWeekRange(start).start)}
           onSelectSlot={(slot) => {

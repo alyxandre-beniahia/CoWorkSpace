@@ -39,6 +39,8 @@ type ReservationCalendarProps = {
   }) => void;
   /** Drag & drop ou resize d’un évènement. */
   onEventChange?: (info: { id: string; start: Date; end: Date }) => void;
+  /** Autoriser la sélection sur un créneau déjà occupé (ex. réserver un autre espace). Défaut false. */
+  selectOverlap?: boolean;
 };
 
 export function ReservationCalendar({
@@ -51,9 +53,11 @@ export function ReservationCalendar({
   editableEvents = false,
   onEventClick,
   onEventChange,
+  selectOverlap = false,
 }: ReservationCalendarProps) {
   return (
     <FullCalendar
+      className="reservation-calendar"
       plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
       initialView="timeGridWeek"
       locale="fr"
@@ -62,6 +66,10 @@ export function ReservationCalendar({
         left: "prev,next today",
         center: "title",
         right: "dayGridMonth,timeGridWeek",
+      }}
+      views={{
+        dayGridMonth: { buttonText: "Mois" },
+        timeGridWeek: { buttonText: "Semaine" },
       }}
       events={events}
       height={height}
@@ -77,8 +85,8 @@ export function ReservationCalendar({
       eventOrder={slotEventOverlap === false ? 'extendedProps.spaceName,title' : undefined}
       selectable={selectable}
       selectMirror
-      selectOverlap={false}
-      // Créneaux réservés non sélectionnables (US-RES-01).
+      selectOverlap={selectOverlap}
+      // Si selectOverlap=false, les créneaux déjà occupés ne sont pas sélectionnables (US-RES-01).
       select={(arg: DateSelectArg) => {
         if (!onSelectSlot) return;
         onSelectSlot({ start: arg.start, end: arg.end });
