@@ -21,7 +21,7 @@ export function HomePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">CoWork'Space</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">CoWork'Space</h1>
         <p className="text-muted-foreground">
           Vue plan des espaces (aujourd&apos;hui) et disponibilités par salle
         </p>

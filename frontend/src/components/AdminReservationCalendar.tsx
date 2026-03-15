@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { EventInput } from '@fullcalendar/core'
 import { ReservationCalendar, type CalendarSlot } from '@/components/ReservationCalendar'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { AdminReservationDetailModal } from '@/components/AdminReservationDetailModal'
 import { AdminCreateReservationModal } from '@/components/AdminCreateReservationModal'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -75,6 +76,7 @@ function colorForSpaceId(spaceId: string, spaceName?: string | null): string {
 
 export function AdminReservationCalendar() {
   const { token, user } = useAuth()
+  const isMobile = useMediaQuery(768)
   const isAdmin = user?.role?.slug === 'admin'
   const [events, setEvents] = useState<EventInput[]>([])
   const [spaces, setSpaces] = useState<SpaceListItem[]>([])
@@ -85,6 +87,7 @@ export function AdminReservationCalendar() {
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<CalendarSlot | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const calendarHeight = isMobile ? 400 : 630
 
   useEffect(() => {
     api<SpaceListItem[]>('/spaces')
@@ -149,7 +152,7 @@ export function AdminReservationCalendar() {
             value={selectedSpaceId ?? 'all'}
             onValueChange={(v) => setSelectedSpaceId(v === 'all' ? null : v)}
           >
-            <SelectTrigger className="w-[280px]">
+            <SelectTrigger className="w-full sm:w-[280px]">
               <SelectValue placeholder="Tous les espaces">
                 {selectedSpaceId === null || selectedSpaceId === 'all'
                   ? 'Tous les espaces'
@@ -183,7 +186,7 @@ export function AdminReservationCalendar() {
       <CardContent>
         <ReservationCalendar
           events={events}
-          height={630}
+          height={calendarHeight}
           slotEventOverlap={false}
           selectable
           selectOverlap

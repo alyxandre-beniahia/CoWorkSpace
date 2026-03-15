@@ -89,7 +89,7 @@ export function ProfilePage() {
           <CardDescription>Mettre à jour vos informations personnelles</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-start gap-6">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
             <Avatar size="lg" className="size-16 shrink-0">
               <AvatarImage src={avatarUrl} alt={`${user.firstname} ${user.lastname}`} />
               <AvatarFallback>
@@ -97,7 +97,7 @@ export function ProfilePage() {
                 {user.lastname[0]}
               </AvatarFallback>
             </Avatar>
-            <form onSubmit={handleSubmit} className="space-y-4 flex-1 max-w-md">
+            <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4 flex-1">
               <div className="space-y-2">
                 <Label htmlFor="firstname">Prénom</Label>
                 <Input

@@ -1,9 +1,45 @@
+import { useState } from 'react'
 import { Link, Outlet } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
+import { Menu } from 'lucide-react'
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetHeader,
+} from '@/components/ui/sheet'
 
 export function Layout() {
   const { user, logout } = useAuth()
+  const [sheetOpen, setSheetOpen] = useState(false)
+
+  const navLinks = (
+    <>
+      <Link to="/espaces" onClick={() => setSheetOpen(false)}>
+        <Button variant="ghost" size="sm">Espaces</Button>
+      </Link>
+      {user && (
+        <Link to="/profil" onClick={() => setSheetOpen(false)}>
+          <Button variant="ghost" size="sm">Profil</Button>
+        </Link>
+      )}
+      {user?.role.slug === 'admin' && (
+        <Link to="/admin" onClick={() => setSheetOpen(false)}>
+          <Button variant="ghost" size="sm">Admin</Button>
+        </Link>
+      )}
+      {user ? (
+        <Button variant="outline" size="sm" onClick={() => { setSheetOpen(false); logout(); }}>
+          Déconnexion
+        </Button>
+      ) : (
+        <Link to="/login" onClick={() => setSheetOpen(false)}>
+          <Button size="sm">Connexion</Button>
+        </Link>
+      )}
+    </>
+  )
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -11,32 +47,31 @@ export function Layout() {
         <Link to="/" className="text-xl font-bold tracking-tight">
           CoWork'Space
         </Link>
-        <nav className="flex items-center gap-2">
-          <Link to="/espaces">
-            <Button variant="ghost" size="sm">Espaces</Button>
-          </Link>
-          {user && (
-            <Link to="/profil">
-              <Button variant="ghost" size="sm">Profil</Button>
-            </Link>
-          )}
-          {user?.role.slug === 'admin' && (
-            <Link to="/admin">
-              <Button variant="ghost" size="sm">Admin</Button>
-            </Link>
-          )}
-          {user ? (
-            <Button variant="outline" size="sm" onClick={logout}>
-              Déconnexion
-            </Button>
-          ) : (
-            <Link to="/login">
-              <Button size="sm">Connexion</Button>
-            </Link>
-          )}
+        <nav className="hidden md:flex items-center gap-2">
+          {navLinks}
         </nav>
+        <div className="md:hidden">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSheetOpen(true)}
+            aria-label="Ouvrir le menu"
+          >
+            <Menu className="size-5" />
+          </Button>
+        </div>
       </header>
-      <main className="flex-1 p-6">
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent showCloseButton className="pt-12">
+          <SheetHeader>
+            <SheetTitle>Menu</SheetTitle>
+          </SheetHeader>
+          <nav className="flex flex-col gap-2">
+            {navLinks}
+          </nav>
+        </SheetContent>
+      </Sheet>
+      <main className="flex-1 p-4 sm:p-6">
         <Outlet />
       </main>
     </div>

@@ -119,7 +119,7 @@ export function AdminEquipementsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Gestion des équipements</h1>
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Gestion des équipements</h1>
         <p className="text-muted-foreground text-sm">
           Créez et modifiez les équipements (vidéoprojecteur, tableau, visio…)
         </p>

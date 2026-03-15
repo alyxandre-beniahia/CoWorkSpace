@@ -59,7 +59,7 @@ export function SpaceDetailPage() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">{space.name}</CardTitle>
+          <CardTitle className="text-xl sm:text-2xl">{space.name}</CardTitle>
         </CardHeader>
         <CardContent>
           <dl className="grid gap-3 text-sm sm:grid-cols-[auto_1fr]">

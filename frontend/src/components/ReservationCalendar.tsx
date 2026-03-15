@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -10,6 +11,7 @@ import type {
 } from "@fullcalendar/core";
 import type { EventResizeDoneArg } from "@fullcalendar/interaction";
 import type { ReservationEventExtendedProps } from "@/types/reservation";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 const defaultEvents: EventInput[] = [];
 
@@ -61,6 +63,20 @@ export function ReservationCalendar({
   displayEventTime = true,
   compactTitles = false,
 }: ReservationCalendarProps) {
+  const isMobile = useMediaQuery(768);
+  const effectiveHeight = useMemo(() => {
+    if (typeof height === "string") return height;
+    return isMobile ? Math.min(height, 320) : height;
+  }, [height, isMobile]);
+  const initialView = isMobile ? "timeGridDay" : "timeGridWeek";
+  const headerToolbar = isMobile
+    ? { left: "prev,next", center: "title", right: "today" }
+    : {
+        left: "prev,next today",
+        center: "title",
+        right: "dayGridMonth,timeGridWeek",
+      };
+
   return (
     <div
       className={
@@ -70,23 +86,20 @@ export function ReservationCalendar({
       }
     >
       <FullCalendar
+        key={initialView}
         displayEventTime={displayEventTime}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-        initialView="timeGridWeek"
+        initialView={initialView}
         locale="fr"
         firstDay={1}
-        headerToolbar={{
-          left: "prev,next today",
-          center: "title",
-          right: "dayGridMonth,timeGridWeek",
-        }}
+        headerToolbar={headerToolbar}
         buttonText={{
           month: "Mois",
           week: "Semaine",
           today: "Aujourd'hui",
         }}
         events={events}
-        height={height}
+        height={effectiveHeight}
         datesSet={(arg) => {
           if (onDatesSet && arg.start && arg.end) onDatesSet(arg.start, arg.end);
         }}

@@ -71,7 +71,7 @@ export function EspacesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Espaces</h1>
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Espaces</h1>
         <p className="text-muted-foreground">Plan et liste des espaces, statut et équipements</p>
       </div>
 
@@ -87,7 +87,7 @@ export function EspacesPage() {
               value={filters.type || 'all'}
               onValueChange={(v) => setFilters((f) => ({ ...f, type: (v === 'all' ? '' : v) as SpaceType | '' }))}
             >
-              <SelectTrigger className="min-w-[180px] min-h-[44px] md:min-h-0">
+              <SelectTrigger className="w-full min-h-[44px] sm:min-w-[180px] md:min-h-0">
                 <SelectValue placeholder="Tous">
                   {filters.type ? SPACE_TYPE_LABELS[filters.type] : 'Tous'}
                 </SelectValue>
@@ -108,7 +108,7 @@ export function EspacesPage() {
               value={filters.equipementId || 'all'}
               onValueChange={(v) => setFilters((f) => ({ ...f, equipementId: (v === 'all' ? '' : v) || '' }))}
             >
-              <SelectTrigger className="min-w-[180px] min-h-[44px] md:min-h-0">
+              <SelectTrigger className="w-full min-h-[44px] sm:min-w-[180px] md:min-h-0">
                 <SelectValue placeholder="Tous">
                   {filters.equipementId
                     ? (equipments.find((e) => e.id === filters.equipementId)?.name ?? '')

@@ -98,14 +98,14 @@ export function FloorPlanSVG({
   )
 
   return (
-    <div className="w-full overflow-auto rounded-xl border border-border/60 bg-muted/10">
+    <div className="w-full min-h-[280px] overflow-auto rounded-xl border border-border/60 bg-muted/10">
       <svg
         ref={svgRef}
-        width={PLAN_WIDTH}
-        height={PLAN_HEIGHT}
+        width="100%"
+        height="auto"
         viewBox={`0 0 ${PLAN_WIDTH} ${PLAN_HEIGHT}`}
         preserveAspectRatio="xMidYMid meet"
-        className="max-w-full"
+        className="block"
         style={{ cursor: onPlacementClick ? 'crosshair' : undefined }}
       >
         {/* Partie statique */}

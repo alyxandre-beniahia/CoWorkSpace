@@ -110,11 +110,11 @@ export function AdminMembresPage() {
               {pending.map((u) => (
                 <li
                   key={u.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
+                  className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
                 >
                   <span className="font-medium">{u.firstname} {u.lastname}</span>
                   <span className="text-muted-foreground text-sm">{u.email}</span>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 shrink-0">
                     <Button
                       size="sm"
                       onClick={() => handleValidate(u.id)}
@@ -153,13 +153,13 @@ export function AdminMembresPage() {
               {members.map((u) => (
                 <li
                   key={u.id}
-                  className="grid grid-cols-[1fr_1fr_5rem_auto] items-center gap-3 rounded-md border p-3"
+                  className="flex flex-col gap-2 rounded-md border p-3 sm:grid sm:grid-cols-[1fr_1fr_5rem_auto] sm:items-center sm:gap-3"
                 >
                   <span className="font-medium min-w-0 truncate">{u.firstname} {u.lastname}</span>
                   <span className="text-muted-foreground text-sm min-w-0 truncate">{u.email}</span>
                   <Badge
                     variant={u.isActive ? 'default' : 'secondary'}
-                    className="w-16 shrink-0 justify-center"
+                    className="w-fit shrink-0 justify-center sm:w-16"
                   >
                     {u.isActive ? 'Actif' : 'Inactif'}
                   </Badge>
@@ -168,7 +168,7 @@ export function AdminMembresPage() {
                     variant={u.isActive ? 'outline' : 'default'}
                     onClick={() => handleSetActive(u.id, !u.isActive)}
                     disabled={actingId !== null}
-                    className="shrink-0 justify-self-end"
+                    className="shrink-0 sm:justify-self-end"
                   >
                     {u.isActive ? 'Désactiver' : 'Activer'}
                   </Button>

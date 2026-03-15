@@ -47,12 +47,20 @@ export async function cleanupAdminData(prisma: PrismaClient): Promise<void> {
 }
 
 /**
- * Soft delete des réservations créées par les tests (title commence par "it-").
- * Garde une trace pour la fonctionnalité historique à venir.
+ * Soft delete des réservations créées par les tests :
+ * - title commence par "it-"
+ * - ou title = "Réunion modifiée" / "Test" (titres utilisés dans les tests PATCH).
+ * Ainsi les données de test ne polluent pas la base.
  */
 export async function cleanupReservationData(prisma: PrismaClient): Promise<void> {
   await prisma.reservation.updateMany({
-    where: { title: { startsWith: 'it-' } },
+    where: {
+      OR: [
+        { title: { startsWith: 'it-' } },
+        { title: 'Réunion modifiée' },
+        { title: 'Test' },
+      ],
+    },
     data: { deletedAt: new Date() },
   });
 }
