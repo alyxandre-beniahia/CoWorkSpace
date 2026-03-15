@@ -149,3 +149,17 @@ body {
     @apply font-sans;
   }
 }
+
+/* Calendrier admin : titres seuls, lisibles (cible le DOM FullCalendar, d'où le CSS) */
+.reservation-calendar--compact-titles .fc-timegrid-event {
+  @apply min-h-8 flex items-center;
+}
+.reservation-calendar--compact-titles .fc-event-main-frame {
+  @apply min-h-0 overflow-hidden;
+}
+.reservation-calendar--compact-titles .fc-event-title {
+  @apply overflow-hidden text-ellipsis whitespace-nowrap text-[0.8125rem] leading-tight;
+}
+.reservation-calendar--compact-titles .fc-event-time {
+  @apply hidden;
+}

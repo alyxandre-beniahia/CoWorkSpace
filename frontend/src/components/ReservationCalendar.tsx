@@ -41,6 +41,10 @@ type ReservationCalendarProps = {
   onEventChange?: (info: { id: string; start: Date; end: Date }) => void;
   /** Autoriser la sélection sur un créneau déjà occupé (ex. réserver un autre espace). Défaut false. */
   selectOverlap?: boolean;
+  /** Masquer l'heure dans les blocs d'événements (afficher uniquement le titre). Défaut true. */
+  displayEventTime?: boolean;
+  /** Mode titres compacts : hauteur minimale et ellipsis pour rester lisible quand il y a beaucoup d'événements. */
+  compactTitles?: boolean;
 };
 
 export function ReservationCalendar({
@@ -54,10 +58,19 @@ export function ReservationCalendar({
   onEventClick,
   onEventChange,
   selectOverlap = false,
+  displayEventTime = true,
+  compactTitles = false,
 }: ReservationCalendarProps) {
   return (
-    <div className="reservation-calendar">
+    <div
+      className={
+        compactTitles
+          ? "reservation-calendar reservation-calendar--compact-titles"
+          : "reservation-calendar"
+      }
+    >
       <FullCalendar
+        displayEventTime={displayEventTime}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="timeGridWeek"
         locale="fr"
