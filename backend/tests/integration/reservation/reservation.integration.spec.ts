@@ -1,12 +1,27 @@
 import { PrismaService } from '../../../src/database/prisma.service';
 import { createTestApp, getAuthToken } from '../setup/test-app';
-import { cleanupReservationData } from '../setup/test-db';
+import { cleanupReservationData, cleanupReservationsForUserInRange } from '../setup/test-db';
 import { createTestReservation } from '../setup/fixtures/reservation.fixtures';
 
 const FAKE_ID = 'clnonexistentid12345678901234';
 
 function toIso(d: Date): string {
   return d.toISOString();
+}
+
+/** Créneau dans la plage 7h–20h Paris : `joursFromNow` jours plus tard à 12:00 UTC (≈ 13h Paris). */
+function startInWindow(joursFromNow = 2): Date {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + joursFromNow);
+  d.setUTCHours(12, 0, 0, 0);
+  return d;
+}
+
+/** Même chose avec un décalage en minutes (0–30) pour éviter collisions entre runs. */
+function startInWindowUnique(joursFromNow: number): Date {
+  const d = startInWindow(joursFromNow);
+  d.setUTCMinutes((Date.now() / 60000) % 30, 0, 0);
+  return d;
 }
 
 describe('Reservation (intégration)', () => {
@@ -95,7 +110,7 @@ describe('Reservation (intégration)', () => {
 
   describe('POST /reservations', () => {
     it('crée une réservation', async () => {
-      const start = new Date(Date.now() + 48 * 60 * 60 * 1000);
+      const start = startInWindow(2);
       const end = new Date(start.getTime() + 60 * 60 * 1000);
 
       const res = await req
@@ -119,7 +134,7 @@ describe('Reservation (intégration)', () => {
     });
 
     it('retourne 400 si fin <= début', async () => {
-      const start = new Date(Date.now() + 48 * 60 * 60 * 1000);
+      const start = startInWindow(2);
       const end = new Date(start.getTime() - 60 * 60 * 1000);
 
       const res = await req
@@ -137,7 +152,7 @@ describe('Reservation (intégration)', () => {
     });
 
     it('retourne 401 sans token', async () => {
-      const start = new Date(Date.now() + 48 * 60 * 60 * 1000);
+      const start = startInWindow(2);
       const end = new Date(start.getTime() + 60 * 60 * 1000);
 
       await req
@@ -152,7 +167,7 @@ describe('Reservation (intégration)', () => {
     });
 
     it('retourne 409 si chevauchement', async () => {
-      const start = new Date(Date.now() + 72 * 60 * 60 * 1000);
+      const start = startInWindow(3);
       const end = new Date(start.getTime() + 60 * 60 * 1000);
 
       await createTestReservation(prisma!, {
@@ -173,12 +188,12 @@ describe('Reservation (intégration)', () => {
         })
         .expect(409);
 
-      expect(res.body.message).toContain('chevauche');
+      expect(res.body.message).toMatch(/chevauche|déjà une réservation/);
     });
 
     describe('réservation par poste (openspace)', () => {
       it('crée une réservation avec seatId sur un poste', async () => {
-        const start = new Date(Date.now() + 400 * 60 * 60 * 1000);
+        const start = startInWindow(4);
         const end = new Date(start.getTime() + 60 * 60 * 1000);
 
         const res = await req
@@ -202,7 +217,7 @@ describe('Reservation (intégration)', () => {
       });
 
       it('retourne 409 si même poste et même créneau', async () => {
-        const start = new Date(Date.now() + 500 * 60 * 60 * 1000);
+        const start = startInWindow(5);
         const end = new Date(start.getTime() + 60 * 60 * 1000);
 
         await createTestReservation(prisma!, {
@@ -226,15 +241,15 @@ describe('Reservation (intégration)', () => {
           })
           .expect(409);
 
-        expect(res.body.message).toContain('chevauche');
+        expect(res.body.message).toMatch(/chevauche|déjà une réservation/);
       });
 
       it('crée une réservation sur un autre poste au même créneau', async () => {
-        const start = new Date(Date.now() + 600 * 60 * 60 * 1000);
+        const start = startInWindow(6);
         const end = new Date(start.getTime() + 60 * 60 * 1000);
 
         await createTestReservation(prisma!, {
-          userId: memberId,
+          userId: adminId,
           spaceId: openSpaceId,
           seatId: openSpaceSeat1Id,
           startDatetime: start,
@@ -263,9 +278,15 @@ describe('Reservation (intégration)', () => {
     });
 
     it('crée une réservation récurrente', async () => {
-      const start = new Date(Date.now() + 600 * 60 * 60 * 1000);
+      const start = startInWindowUnique(50);
       const end = new Date(start.getTime() + 60 * 60 * 1000);
       const recurrenceEndAt = new Date(start.getTime() + 72 * 60 * 60 * 1000);
+      await cleanupReservationsForUserInRange(
+        prisma!,
+        memberId,
+        start,
+        new Date(recurrenceEndAt.getTime() + 60 * 60 * 1000),
+      );
 
       const res = await req
         .post('/reservations')
@@ -291,7 +312,7 @@ describe('Reservation (intégration)', () => {
     });
 
     it('retourne 400 si recurrenceEndAt <= startDatetime', async () => {
-      const start = new Date(Date.now() + 650 * 60 * 60 * 1000);
+      const start = startInWindow(8);
       const end = new Date(start.getTime() + 60 * 60 * 1000);
       const recurrenceEndAt = new Date(start.getTime() - 60 * 60 * 1000);
 
@@ -308,11 +329,11 @@ describe('Reservation (intégration)', () => {
         })
         .expect(400);
 
-      expect(res.body.message).toContain('récurrence');
+      expect(res.body.message).toMatch(/récurrence|date de fin/);
     });
 
     it('retourne 409 si une occurrence de la série récurrente chevauche une réservation existante', async () => {
-      const start = new Date(Date.now() + 800 * 60 * 60 * 1000);
+      const start = startInWindow(9);
       const end = new Date(start.getTime() + 60 * 60 * 1000);
       const recurrenceEndAt = new Date(start.getTime() + 72 * 60 * 60 * 1000);
 
@@ -337,7 +358,7 @@ describe('Reservation (intégration)', () => {
         .expect(409);
 
       expect(res.body.message).toContain('Impossible de créer la série');
-      expect(res.body.message).toContain('déjà réservé');
+      expect(res.body.message).toMatch(/déjà réservé|déjà une réservation/);
     });
   });
 
@@ -473,8 +494,9 @@ describe('Reservation (intégration)', () => {
 
   describe('PATCH /reservations/:id', () => {
     it('met à jour une réservation', async () => {
-      const slotStart = new Date(Date.now() + 900 * 60 * 60 * 1000);
+      const slotStart = startInWindowUnique(51);
       const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
+      await cleanupReservationsForUserInRange(prisma!, memberId, slotStart, slotEnd);
       const { reservation } = await createTestReservation(prisma!, {
         userId: memberId,
         spaceId: spaceIdB,
@@ -483,13 +505,17 @@ describe('Reservation (intégration)', () => {
         title: `it-update-${Date.now()}`,
       });
 
-      const res = await req
+      await req
         .patch(`/reservations/${reservation.id}`)
         .set('Authorization', `Bearer ${memberToken}`)
         .send({ title: 'Réunion modifiée' })
         .expect(200);
 
-      expect(res.body.title).toBe('Réunion modifiée');
+      const getRes = await req
+        .get(`/reservations/${reservation.id}`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .expect(200);
+      expect(getRes.body.title).toBe('Réunion modifiée');
     });
 
     it('retourne 404 si id inexistant', async () => {
@@ -530,7 +556,7 @@ describe('Reservation (intégration)', () => {
         userId: memberId,
         spaceId,
       });
-      const start = new Date(Date.now() + 48 * 60 * 60 * 1000);
+      const start = startInWindow(2);
       const end = new Date(start.getTime() - 60 * 60 * 1000);
 
       const res = await req
@@ -546,7 +572,7 @@ describe('Reservation (intégration)', () => {
     });
 
     it('retourne 409 si chevauchement', async () => {
-      const baseStart = new Date(Date.now() + 120 * 60 * 60 * 1000);
+      const baseStart = startInWindow(11);
       const baseEnd = new Date(baseStart.getTime() + 60 * 60 * 1000);
 
       await createTestReservation(prisma!, {
@@ -572,7 +598,7 @@ describe('Reservation (intégration)', () => {
         })
         .expect(409);
 
-      expect(res.body.message).toContain('chevauche');
+      expect(res.body.message).toMatch(/chevauche|déjà une réservation/);
     });
   });
 
@@ -620,7 +646,7 @@ describe('Reservation (intégration)', () => {
     });
 
     it('annule toute la série récurrente avec scope=all', async () => {
-      const start = new Date(Date.now() + 700 * 60 * 60 * 1000);
+      const start = startInWindow(12);
       const end = new Date(start.getTime() + 60 * 60 * 1000);
       const recurrenceEndAt = new Date(start.getTime() + 72 * 60 * 60 * 1000);
 

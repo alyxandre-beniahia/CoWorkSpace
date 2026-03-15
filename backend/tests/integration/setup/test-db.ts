@@ -56,3 +56,24 @@ export async function cleanupReservationData(prisma: PrismaClient): Promise<void
     data: { deletedAt: new Date() },
   });
 }
+
+/**
+ * Soft delete des réservations d'un utilisateur qui chevauchent [rangeStart, rangeEnd].
+ * Utile pour garantir des créneaux libres avant un test (résilience aux données résiduelles).
+ */
+export async function cleanupReservationsForUserInRange(
+  prisma: PrismaClient,
+  userId: string,
+  rangeStart: Date,
+  rangeEnd: Date,
+): Promise<void> {
+  await prisma.reservation.updateMany({
+    where: {
+      userId,
+      deletedAt: null,
+      startDatetime: { lt: rangeEnd },
+      endDatetime: { gt: rangeStart },
+    },
+    data: { deletedAt: new Date() },
+  });
+}
