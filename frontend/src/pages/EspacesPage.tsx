@@ -88,7 +88,9 @@ export function EspacesPage() {
               onValueChange={(v) => setFilters((f) => ({ ...f, type: (v === 'all' ? '' : v) as SpaceType | '' }))}
             >
               <SelectTrigger className="min-w-[180px] min-h-[44px] md:min-h-0">
-                <SelectValue placeholder="Tous" />
+                <SelectValue placeholder="Tous">
+                  {filters.type ? SPACE_TYPE_LABELS[filters.type] : 'Tous'}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tous</SelectItem>
@@ -107,7 +109,11 @@ export function EspacesPage() {
               onValueChange={(v) => setFilters((f) => ({ ...f, equipementId: (v === 'all' ? '' : v) || '' }))}
             >
               <SelectTrigger className="min-w-[180px] min-h-[44px] md:min-h-0">
-                <SelectValue placeholder="Tous" />
+                <SelectValue placeholder="Tous">
+                  {filters.equipementId
+                    ? (equipments.find((e) => e.id === filters.equipementId)?.name ?? '')
+                    : 'Tous'}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tous</SelectItem>
@@ -141,7 +147,8 @@ export function EspacesPage() {
               className="w-24 min-h-[44px] md:min-h-0"
             />
           </div>
-          <div className="flex items-end">
+          <div className="space-y-2">
+            <Label className="invisible select-none pointer-events-none">Réinitialiser</Label>
             <Button
               variant="outline"
               onClick={() => setFilters(defaultFilters)}

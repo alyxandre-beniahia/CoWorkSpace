@@ -9,4 +9,6 @@ export type ReservationListFilters = {
   to?: Date;
   currentUserId?: string;
   role?: string;
+  /** Pour l’affichage calendrier : ne pas masquer le titre des réservations privées. */
+  unmaskTitlesForCalendar?: boolean;
 };

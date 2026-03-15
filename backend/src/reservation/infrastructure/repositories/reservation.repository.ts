@@ -42,10 +42,12 @@ export class ReservationRepository implements IReservationRepository {
 
     return reservations.map((r: (typeof reservations)[number]) => {
       const unmaskForAdmin = filters.role === 'admin';
+      const unmaskTitle = unmaskForAdmin || filters.unmaskTitlesForCalendar === true;
       const maskPrivate =
         !unmaskForAdmin &&
         Boolean(filters.currentUserId && r.isPrivate && r.userId !== filters.currentUserId);
       const isOwner = Boolean(filters.currentUserId && r.userId === filters.currentUserId);
+      const title = unmaskTitle ? r.title : (maskPrivate ? null : r.title);
       return {
         id: r.id,
         spaceId: r.spaceId,
@@ -55,7 +57,7 @@ export class ReservationRepository implements IReservationRepository {
         userId: r.userId,
         startDatetime: r.startDatetime,
         endDatetime: r.endDatetime,
-        title: maskPrivate ? null : r.title,
+        title,
         isPrivate: r.isPrivate,
         recurrenceGroupId: r.recurrenceGroupId ?? null,
         isOwner,

@@ -17,7 +17,7 @@ export type SpaceDetail = Omit<SpaceListItem, 'equipements'> & {
   description: string | null
   positionX: number | null
   positionY: number | null
-  equipements: { name: string }[]
+  equipements: { name: string; quantity?: number }[]
 }
 
 export type EquipementItem = { id: string; name: string }

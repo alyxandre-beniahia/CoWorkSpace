@@ -90,11 +90,12 @@ export class ReservationController {
       filters.currentUserId = req.user.userId;
       filters.role = req.user.role;
     }
-    // forPlan=true : retourner toutes les réservations sur la plage (pour le plan d'accueil, couleurs par espace)
+    // forPlan=true : retourner toutes les réservations sur la plage (pour le plan d'accueil / calendrier)
     const isForPlan = forPlan === 'true' || forPlan === '1';
     if (req?.user?.role !== 'admin' && !filters.userId && !filters.spaceId && !isForPlan) {
       filters.userId = req!.user.userId;
     }
+    if (isForPlan) filters.unmaskTitlesForCalendar = true;
     return this.listReservationsUseCase.run(filters);
   }
 

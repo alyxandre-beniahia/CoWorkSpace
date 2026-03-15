@@ -57,18 +57,18 @@ export function AdminActivityFeed() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Activité récente</CardTitle>
+        <CardTitle>Activités de la journée</CardTitle>
         <CardDescription>
-          Créations, modifications et annulations de réservations (rafraîchi toutes les 30 s)
+          Créations, modifications et annulations de réservations aujourd&apos;hui (rafraîchi toutes les 30 s)
         </CardDescription>
       </CardHeader>
       <CardContent>
         {loading ? (
           <p className="text-muted-foreground text-sm">Chargement…</p>
         ) : items.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Aucune activité récente</p>
+          <p className="text-muted-foreground text-sm">Aucune activité aujourd&apos;hui</p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="max-h-64 space-y-3 overflow-y-auto pr-1">
             {items.map((item) => {
               const actionLabel = ACTION_LABELS[item.action] ?? item.action
               const spacePart = item.spaceName ? ` la réservation de ${item.spaceName}` : ' une réservation'

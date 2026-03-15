@@ -9,7 +9,6 @@ import {
 } from '../../../reservation/application/utils/reservation-window.utils';
 
 const UPDATE_THRESHOLD_MS = 2000;
-const ACTIVITY_DAYS = 3;
 
 @Injectable()
 export class AdminStatsRepository implements IAdminStatsRepository {
@@ -119,10 +118,7 @@ export class AdminStatsRepository implements IAdminStatsRepository {
 
   async getActivity(limit: number) {
     const take = Math.min(limit, 50);
-    const { start: todayStartParis } = this.timeRanges.todayParis();
-    const cutoff = new Date(
-      todayStartParis.getTime() - ACTIVITY_DAYS * 24 * 3600 * 1000,
-    );
+    const { start: todayStart, end: todayEnd } = this.timeRanges.todayParis();
 
     const include = {
       user: { select: { firstname: true, lastname: true } },
@@ -131,7 +127,9 @@ export class AdminStatsRepository implements IAdminStatsRepository {
 
     const [cancelled, active] = await Promise.all([
       this.prisma.reservation.findMany({
-        where: { deletedAt: { not: null, gte: cutoff } },
+        where: {
+          deletedAt: { not: null, gte: todayStart, lte: todayEnd },
+        },
         take,
         orderBy: { deletedAt: 'desc' },
         include,
@@ -139,7 +137,10 @@ export class AdminStatsRepository implements IAdminStatsRepository {
       this.prisma.reservation.findMany({
         where: {
           deletedAt: null,
-          OR: [{ createdAt: { gte: cutoff } }, { updatedAt: { gte: cutoff } }],
+          OR: [
+            { createdAt: { gte: todayStart, lte: todayEnd } },
+            { updatedAt: { gte: todayStart, lte: todayEnd } },
+          ],
         },
         take,
         orderBy: { updatedAt: 'desc' },
@@ -172,7 +173,11 @@ export class AdminStatsRepository implements IAdminStatsRepository {
     });
 
     return [...cancelledItems, ...activeItems]
-      .filter((item) => item.createdAt.getTime() >= cutoff.getTime())
+      .filter(
+        (item) =>
+          item.createdAt.getTime() >= todayStart.getTime() &&
+          item.createdAt.getTime() <= todayEnd.getTime(),
+      )
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, take);
   }

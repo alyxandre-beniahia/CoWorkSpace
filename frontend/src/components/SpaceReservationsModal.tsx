@@ -20,6 +20,7 @@ import { api } from "@/lib/api";
 import type { SpaceDetail } from "@/types/space";
 import type {
   ReservationCalendarItem,
+  ReservationDetail,
   CreateReservationBody,
   UpdateReservationBody,
   SeatItem,
@@ -29,6 +30,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
   buildRecurrenceRule,
+  parseRecurrenceRule,
+  toDatetimeLocal,
   type RecurrenceFreq,
 } from "@/lib/recurrence";
 import {
@@ -41,7 +44,7 @@ import {
 
 export type { ReservationCalendarItem };
 
-/** Map une réservation en événement calendrier (accueil : bleu = moi, rouge = autre ; titre seul ; privé masqué pour les autres). */
+/** Map une réservation en événement calendrier (accueil : bleu = moi, rouge = autre). Titre affiché ; si résa d'un autre et privée → "Privée". */
 function reservationToEvent(
   item: ReservationCalendarItem,
   currentUserRole?: string,
@@ -49,26 +52,14 @@ function reservationToEvent(
   const isOwner = item.isOwner;
   const canEdit = isOwner || currentUserRole === "admin";
 
-  if (!canEdit && !isOwner) {
-    return {
-      id: `bg-${item.id}`,
-      title: "",
-      start: item.startDatetime,
-      end: item.endDatetime,
-      display: "background",
-      backgroundColor: "rgba(220, 38, 38, 1)",
-      extendedProps: { spaceName: "", canEdit: false, isOwner: false },
-    };
-  }
-
-  // Couleurs explicites (FullCalendar n'interprète pas var() en inline style selon le thème)
   const backgroundColor = isOwner ? "#2563eb" : "#dc2626";
   const borderColor = backgroundColor;
   const textColor = "#fff";
 
+  // Titre pour toutes les réservations (y compris privées des autres, si l’API le renvoie)
   let title: string;
   if (!isOwner && item.isPrivate) {
-    title = "Occupé";
+    title = item.seatCode ? `Privée – ${item.seatCode}` : "Privée";
   } else if (item.seatCode) {
     title = `${item.title ?? "Réservation"} – ${item.seatCode}`;
   } else {
@@ -137,6 +128,19 @@ export function SpaceReservationsModal({
   const [seats, setSeats] = useState<SeatItem[]>([]);
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
   const [reservationTitle, setReservationTitle] = useState("");
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailReservationId, setDetailReservationId] = useState<string | null>(null);
+  const [detailReservation, setDetailReservation] = useState<ReservationDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailEditing, setDetailEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editStart, setEditStart] = useState("");
+  const [editEnd, setEditEnd] = useState("");
+  const [editIsPrivate, setEditIsPrivate] = useState(false);
+  const [editRecurring, setEditRecurring] = useState(false);
+  const [editRecurrenceFreq, setEditRecurrenceFreq] = useState<RecurrenceFreq>("daily");
+  const [editRecurrenceWeekdays, setEditRecurrenceWeekdays] = useState<number[]>([]);
+  const [editRecurrenceEndAt, setEditRecurrenceEndAt] = useState<Date | null>(null);
 
   const isOpenSpace = space?.type === "OPEN_SPACE";
 
@@ -191,8 +195,24 @@ export function SpaceReservationsModal({
       setSelectedReservation(null);
       setIsPrivate(false);
       setReservationTitle("");
+      setDetailModalOpen(false);
+      setDetailReservationId(null);
+      setDetailReservation(null);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!detailModalOpen || !detailReservationId || !token) {
+      setDetailReservation(null);
+      return;
+    }
+    setDetailLoading(true);
+    setDetailReservation(null);
+    api<ReservationDetail>(`/reservations/${detailReservationId}`, { token })
+      .then(setDetailReservation)
+      .catch(() => setDetailReservation(null))
+      .finally(() => setDetailLoading(false));
+  }, [detailModalOpen, detailReservationId, token]);
 
   const daySlots: HourSlot[] = useMemo(() => {
     const baseDate = selectedDate;
@@ -398,6 +418,9 @@ export function SpaceReservationsModal({
       );
       setEvents(mapped);
       setSelectedReservation(null);
+      setDetailModalOpen(false);
+      setDetailReservationId(null);
+      setDetailReservation(null);
     } catch (e) {
       toast.error(
         e instanceof Error ? e.message : "Impossible d'annuler la réservation",
@@ -407,9 +430,89 @@ export function SpaceReservationsModal({
     }
   }
 
+  function startEditFromDetail() {
+    if (!detailReservation) return;
+    setEditTitle(detailReservation.title ?? "");
+    setEditStart(toDatetimeLocal(detailReservation.startDatetime));
+    setEditEnd(toDatetimeLocal(detailReservation.endDatetime));
+    setEditIsPrivate(detailReservation.isPrivate ?? false);
+    const parsed = parseRecurrenceRule(detailReservation.recurrenceRule);
+    setEditRecurring(parsed.freq !== "none");
+    setEditRecurrenceFreq(parsed.freq === "none" ? "daily" : parsed.freq);
+    setEditRecurrenceWeekdays(parsed.weekdays);
+    setEditRecurrenceEndAt(
+      detailReservation.recurrenceEndAt ? new Date(detailReservation.recurrenceEndAt) : null,
+    );
+    setDetailEditing(true);
+  }
+
+  async function handleSaveDetailEdit() {
+    if (!token || !detailReservationId || !detailReservation || !space) return;
+    const start = new Date(editStart);
+    const end = new Date(editEnd);
+    if (end <= start) {
+      toast.error("La date de fin doit être après la date de début.");
+      return;
+    }
+    const rule =
+      editRecurring && editRecurrenceEndAt && editRecurrenceEndAt >= start
+        ? buildRecurrenceRule(
+            editRecurrenceFreq,
+            editRecurrenceFreq === "weekly" ? editRecurrenceWeekdays : [],
+          )
+        : null;
+    setSubmitting(true);
+    try {
+      const body: UpdateReservationBody = {
+        title: editTitle.trim() || null,
+        startDatetime: start.toISOString(),
+        endDatetime: end.toISOString(),
+        isPrivate: editIsPrivate,
+        recurrenceRule: rule,
+        recurrenceEndAt: rule && editRecurrenceEndAt ? editRecurrenceEndAt.toISOString() : null,
+      };
+      await api(`/reservations/${detailReservationId}`, {
+        method: "PATCH",
+        token,
+        body: JSON.stringify(body),
+      });
+      toast.success("Réservation mise à jour");
+      setDetailEditing(false);
+      const updated = await api<ReservationDetail>(`/reservations/${detailReservationId}`, {
+        token,
+      });
+      setDetailReservation(updated);
+      const { start: s, end: e } = getWeekRangeApiParams(currentWeekStart);
+      const params = new URLSearchParams({
+        spaceId: space.id,
+        start: s,
+        end: e,
+        forPlan: "true",
+      });
+      const items = await api<ReservationCalendarItem[]>(`/reservations?${params.toString()}`, {
+        token,
+      });
+      setReservations(items);
+      setEvents(items.map((item) => reservationToEvent(item, user?.role?.slug)));
+      if (selectedReservation?.id === detailReservationId) {
+        setSelectedReservation({ id: detailReservationId, start, end });
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Impossible de modifier la réservation",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+
   if (!space) return null;
 
+  const canEditDetail = detailReservation?.isOwner || user?.role?.slug === "admin";
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] w-[90vw] max-w-5xl flex-col overflow-hidden sm:max-w-5xl">
         <DialogHeader className="shrink-0 pr-10">
@@ -475,9 +578,9 @@ export function SpaceReservationsModal({
                 <div className="space-y-1">
                   <p className="font-medium text-foreground">Équipements</p>
                   <div className="flex flex-wrap gap-1">
-                    {space.equipements.map((e) => (
-                      <Badge key={e.name} variant="secondary">
-                        {e.name}
+                    {space.equipements.map((e, i) => (
+                      <Badge key={`${e.name}-${i}`} variant="secondary">
+                        {(e.quantity ?? 1) > 1 ? `${e.name} x${e.quantity}` : e.name}
                       </Badge>
                     ))}
                   </div>
@@ -561,14 +664,10 @@ export function SpaceReservationsModal({
                       setSelectedSlot(slot);
                       setSelectedReservation(null);
                     }}
-                    onEventClick={({ id, start, end, canEdit }) => {
-                      if (!canEdit) {
-                        toast.error(
-                          "Vous ne pouvez pas modifier cette réservation",
-                        );
-                        return;
-                      }
+                    onEventClick={({ id, start, end }) => {
                       setSelectedReservation({ id, start, end });
+                      setDetailReservationId(id);
+                      setDetailModalOpen(true);
                       setSelectedSlot(null);
                     }}
                     onEventChange={({ id, start, end }) => {
@@ -760,7 +859,7 @@ export function SpaceReservationsModal({
                   htmlFor="reservation-private"
                   className="cursor-pointer text-muted-foreground font-normal"
                 >
-                  Réservation privée (visible uniquement par moi)
+                  Réservation privée
                 </Label>
               </div>
             </div>
@@ -819,5 +918,264 @@ export function SpaceReservationsModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    <Dialog
+      open={detailModalOpen}
+      onOpenChange={(open) => {
+        setDetailModalOpen(open);
+        if (!open) {
+          setDetailReservationId(null);
+          setDetailEditing(false);
+        }
+      }}
+    >
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Détail de la réservation</DialogTitle>
+        </DialogHeader>
+        {detailLoading ? (
+          <p className="text-muted-foreground text-sm">Chargement…</p>
+        ) : detailReservation ? (
+          <div className="space-y-4">
+            {detailEditing ? (
+              <>
+                <div className="grid gap-3 text-sm">
+                  <div className="grid gap-2">
+                    <Label htmlFor="detail-edit-title">Titre</Label>
+                    <Input
+                      id="detail-edit-title"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      placeholder="Ex. Réunion équipe"
+                      maxLength={200}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="detail-edit-start">Début</Label>
+                    <input
+                      id="detail-edit-start"
+                      type="datetime-local"
+                      value={editStart}
+                      onChange={(e) => setEditStart(e.target.value)}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="detail-edit-end">Fin</Label>
+                    <input
+                      id="detail-edit-end"
+                      type="datetime-local"
+                      value={editEnd}
+                      onChange={(e) => setEditEnd(e.target.value)}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="detail-edit-private"
+                      checked={editIsPrivate}
+                      onChange={(e) => setEditIsPrivate(e.target.checked)}
+                      className="size-4 rounded border-input"
+                    />
+                    <Label htmlFor="detail-edit-private" className="font-normal">
+                      Réservation privée
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="detail-edit-recurrence"
+                      checked={editRecurring}
+                      onChange={(e) => setEditRecurring(e.target.checked)}
+                      className="size-4 rounded border-input"
+                    />
+                    <Label htmlFor="detail-edit-recurrence" className="font-normal">
+                      Répéter
+                    </Label>
+                  </div>
+                  {editRecurring && (
+                    <div className="grid gap-2 rounded-lg border border-border bg-muted/30 p-3">
+                      <div className="grid gap-2">
+                        <Label>Fréquence</Label>
+                        <Select
+                          value={editRecurrenceFreq}
+                          onValueChange={(v) => setEditRecurrenceFreq(v as RecurrenceFreq)}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="daily">Quotidien</SelectItem>
+                            <SelectItem value="weekly">Hebdomadaire</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {editRecurrenceFreq === "weekly" && (
+                        <div className="grid gap-2">
+                          <Label>Jour(s)</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              { i: 0, label: "Dim" },
+                              { i: 1, label: "Lun" },
+                              { i: 2, label: "Mar" },
+                              { i: 3, label: "Mer" },
+                              { i: 4, label: "Jeu" },
+                              { i: 5, label: "Ven" },
+                              { i: 6, label: "Sam" },
+                            ].map(({ i, label }) => (
+                              <label
+                                key={i}
+                                className="flex cursor-pointer items-center gap-1.5 text-sm"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={editRecurrenceWeekdays.includes(i)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setEditRecurrenceWeekdays((prev) =>
+                                        [...prev, i].sort((a, b) => a - b),
+                                      );
+                                    } else {
+                                      setEditRecurrenceWeekdays((prev) =>
+                                        prev.filter((d) => d !== i),
+                                      );
+                                    }
+                                  }}
+                                  className="size-4 rounded border-input"
+                                />
+                                {label}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <div className="grid gap-2">
+                        <Label>Répéter jusqu&apos;au</Label>
+                        <input
+                          type="date"
+                          min={editStart.slice(0, 10)}
+                          value={
+                            editRecurrenceEndAt
+                              ? editRecurrenceEndAt.toISOString().slice(0, 10)
+                              : ""
+                          }
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setEditRecurrenceEndAt(v ? new Date(v + "T23:59:59") : null);
+                          }}
+                          className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    onClick={handleSaveDetailEdit}
+                    disabled={submitting}
+                  >
+                    {submitting ? "Enregistrement…" : "Enregistrer"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setDetailEditing(false)}
+                    disabled={submitting}
+                  >
+                    Annuler
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <dl className="grid gap-2 text-sm">
+                  <div>
+                    <dt className="text-muted-foreground">Titre</dt>
+                    <dd className="font-medium">
+                      {detailReservation.isPrivate && !detailReservation.isOwner
+                        ? "—"
+                        : (detailReservation.title ?? "—")}
+                    </dd>
+                  </div>
+                  {detailReservation.seatCode && (
+                    <div>
+                      <dt className="text-muted-foreground">Poste</dt>
+                      <dd className="font-medium">{detailReservation.seatCode}</dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt className="text-muted-foreground">Réservé par</dt>
+                    <dd className="font-medium">
+                      {detailReservation.userName?.trim() ||
+                        (detailReservation.isPrivate && !detailReservation.isOwner
+                          ? "Privé"
+                          : "—")}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Début</dt>
+                    <dd>
+                      {new Date(detailReservation.startDatetime).toLocaleString("fr-FR", {
+                        weekday: "short",
+                        day: "2-digit",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Fin</dt>
+                    <dd>
+                      {new Date(detailReservation.endDatetime).toLocaleString("fr-FR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Privée</dt>
+                    <dd>{detailReservation.isPrivate ? "Oui" : "Non"}</dd>
+                  </div>
+                  {(detailReservation.recurrenceRule || detailReservation.recurrenceGroupId) && (
+                    <div>
+                      <dt className="text-muted-foreground">Récurrence</dt>
+                      <dd>
+                        Oui
+                        {detailReservation.recurrenceEndAt &&
+                          ` jusqu'au ${new Date(detailReservation.recurrenceEndAt).toLocaleDateString("fr-FR")}`}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+                <div className="flex flex-wrap gap-2">
+                  {canEditDetail ? (
+                    <>
+                      <Button variant="outline" onClick={startEditFromDetail}>
+                        Modifier
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        disabled={submitting}
+                        onClick={() => handleCancelReservation()}
+                      >
+                        Annuler la réservation
+                      </Button>
+                    </>
+                  ) : (
+                    <Button variant="outline" onClick={() => setDetailModalOpen(false)}>
+                      Fermer
+                    </Button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm">Réservation introuvable.</p>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
