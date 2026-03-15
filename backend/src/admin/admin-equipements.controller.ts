@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards, NotFoundException } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/infrastructure/jwt-auth.guard';
-import { AdminGuard } from '../auth/infrastructure/admin.guard';
+import { JwtAuthGuard } from '../shared/guards/jwt-auth.guard';
+import { AdminGuard } from '../shared/guards/admin.guard';
 import { ListEquipementsUseCase } from './application/list-equipements.use-case';
 import { CreateEquipementUseCase } from './application/create-equipement.use-case';
 import { UpdateEquipementUseCase } from './application/update-equipement.use-case';

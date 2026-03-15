@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationModule } from '../notification/notification.module';
-import { PrismaModule } from '../prisma/prisma.module';
+import { PrismaModule } from '../database/prisma.module';
 import { AdminController } from './admin.controller';
 import { AdminSpacesController } from './admin-spaces.controller';
 import { AdminEquipementsController } from './admin-equipements.controller';
