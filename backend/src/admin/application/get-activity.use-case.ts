@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { getTodayStartEndParis } from '../../reservation/application/reservation-window.utils';
+import { getTodayStartEndParis } from '../../reservation/application/utils/reservation-window.utils';
 
 export type ActivityItem = {
   id: string;

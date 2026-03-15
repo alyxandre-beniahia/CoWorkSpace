@@ -3,12 +3,15 @@ import type { IUserRepository } from '../../domain/repositories/user.repository.
 import { AUTH_USER_REPOSITORY } from '../../domain/repositories/user.repository.interface';
 import type { IEmailSender } from '../ports/email-sender.port';
 import { AUTH_EMAIL_SENDER } from '../ports/email-sender.port';
+import type { ITokenGenerator } from '../ports/token-generator.port';
+import { AUTH_TOKEN_GENERATOR } from '../ports/token-generator.port';
 import { RequestPasswordResetUseCase } from './request-password-reset.use-case';
 
 describe('RequestPasswordResetUseCase', () => {
   let useCase: RequestPasswordResetUseCase;
   let mockUserRepo: jest.Mocked<IUserRepository>;
   let mockEmailSender: jest.Mocked<IEmailSender>;
+  let mockTokenGenerator: jest.Mocked<ITokenGenerator>;
 
   beforeEach(async () => {
     mockUserRepo = {
@@ -28,12 +31,24 @@ describe('RequestPasswordResetUseCase', () => {
       sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
       sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
     };
+    mockTokenGenerator = {
+      generate: jest.fn().mockReturnValue('reset-token-hex'),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         { provide: AUTH_USER_REPOSITORY, useValue: mockUserRepo },
         { provide: AUTH_EMAIL_SENDER, useValue: mockEmailSender },
-        RequestPasswordResetUseCase,
+        { provide: AUTH_TOKEN_GENERATOR, useValue: mockTokenGenerator },
+        {
+          provide: RequestPasswordResetUseCase,
+          useFactory: (
+            userRepo: IUserRepository,
+            emailSender: IEmailSender,
+            tokenGenerator: ITokenGenerator,
+          ) => new RequestPasswordResetUseCase(userRepo, emailSender, tokenGenerator),
+          inject: [AUTH_USER_REPOSITORY, AUTH_EMAIL_SENDER, AUTH_TOKEN_GENERATOR],
+        },
       ],
     }).compile();
 

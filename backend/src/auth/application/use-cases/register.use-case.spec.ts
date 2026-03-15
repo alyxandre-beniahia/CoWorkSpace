@@ -4,12 +4,18 @@ import type { IUserRepository } from '../../domain/repositories/user.repository.
 import { AUTH_USER_REPOSITORY } from '../../domain/repositories/user.repository.interface';
 import type { IEmailSender } from '../ports/email-sender.port';
 import { AUTH_EMAIL_SENDER } from '../ports/email-sender.port';
+import type { IPasswordHasher } from '../ports/password-hasher.port';
+import { AUTH_PASSWORD_HASHER } from '../ports/password-hasher.port';
+import type { ITokenGenerator } from '../ports/token-generator.port';
+import { AUTH_TOKEN_GENERATOR } from '../ports/token-generator.port';
 import { RegisterUseCase } from './register.use-case';
 
 describe('RegisterUseCase', () => {
   let useCase: RegisterUseCase;
   let mockUserRepo: jest.Mocked<IUserRepository>;
   let mockEmailSender: jest.Mocked<IEmailSender>;
+  let mockPasswordHasher: jest.Mocked<IPasswordHasher>;
+  let mockTokenGenerator: jest.Mocked<ITokenGenerator>;
 
   beforeEach(async () => {
     mockUserRepo = {
@@ -29,12 +35,30 @@ describe('RegisterUseCase', () => {
       sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
       sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
     };
+    mockPasswordHasher = {
+      hash: jest.fn().mockResolvedValue('hashed-password'),
+      compare: jest.fn(),
+    };
+    mockTokenGenerator = {
+      generate: jest.fn().mockReturnValue('random-token-hex'),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         { provide: AUTH_USER_REPOSITORY, useValue: mockUserRepo },
         { provide: AUTH_EMAIL_SENDER, useValue: mockEmailSender },
-        RegisterUseCase,
+        { provide: AUTH_PASSWORD_HASHER, useValue: mockPasswordHasher },
+        { provide: AUTH_TOKEN_GENERATOR, useValue: mockTokenGenerator },
+        {
+          provide: RegisterUseCase,
+          useFactory: (
+            userRepo: IUserRepository,
+            emailSender: IEmailSender,
+            passwordHasher: IPasswordHasher,
+            tokenGenerator: ITokenGenerator,
+          ) => new RegisterUseCase(userRepo, emailSender, passwordHasher, tokenGenerator),
+          inject: [AUTH_USER_REPOSITORY, AUTH_EMAIL_SENDER, AUTH_PASSWORD_HASHER, AUTH_TOKEN_GENERATOR],
+        },
       ],
     }).compile();
 

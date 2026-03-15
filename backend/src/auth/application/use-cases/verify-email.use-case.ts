@@ -1,21 +1,15 @@
-import { Injectable, Inject } from '@nestjs/common';
 import {
   BadRequestAuthError,
   InvalidOrExpiredTokenError,
 } from '../../domain/errors/auth.errors';
 import type { IUserRepository } from '../../domain/repositories/user.repository.interface';
-import { AUTH_USER_REPOSITORY } from '../../domain/repositories/user.repository.interface';
 
 type VerifyEmailResult = {
   message: string;
 };
 
-@Injectable()
 export class VerifyEmailUseCase {
-  constructor(
-    @Inject(AUTH_USER_REPOSITORY)
-    private readonly userRepo: IUserRepository,
-  ) {}
+  constructor(private readonly userRepo: IUserRepository) {}
 
   /** Marque l'email comme vérifié (lien cliqué dans l'email). */
   async run(token: string): Promise<VerifyEmailResult> {

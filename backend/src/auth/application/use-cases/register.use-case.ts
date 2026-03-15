@@ -1,24 +1,20 @@
-import { Injectable, Inject } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
 import { EmailAlreadyExistsError, RoleMissingError } from '../../domain/errors/auth.errors';
 import type { IUserRepository } from '../../domain/repositories/user.repository.interface';
-import { AUTH_USER_REPOSITORY } from '../../domain/repositories/user.repository.interface';
 import type { IEmailSender } from '../ports/email-sender.port';
-import { AUTH_EMAIL_SENDER } from '../ports/email-sender.port';
+import type { IPasswordHasher } from '../ports/password-hasher.port';
+import type { ITokenGenerator } from '../ports/token-generator.port';
 import type { RegisterDto } from '../dtos/register.dto';
 
 type RegisterResult = {
   message: string;
 };
 
-@Injectable()
 export class RegisterUseCase {
   constructor(
-    @Inject(AUTH_USER_REPOSITORY)
     private readonly userRepo: IUserRepository,
-    @Inject(AUTH_EMAIL_SENDER)
     private readonly emailSender: IEmailSender,
+    private readonly passwordHasher: IPasswordHasher,
+    private readonly tokenGenerator: ITokenGenerator,
   ) {}
 
   /** Crée un compte inactif et un token de vérification email (l'envoi d'email est géré ailleurs). */
@@ -33,8 +29,8 @@ export class RegisterUseCase {
       throw new RoleMissingError('Rôle member manquant en base');
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
-    const token = randomBytes(32).toString('hex');
+    const passwordHash = await this.passwordHasher.hash(dto.password);
+    const token = this.tokenGenerator.generate();
 
     const user = await this.userRepo.createUser({
       firstname: dto.firstname,

@@ -1,18 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import * as bcrypt from 'bcrypt';
 import { InvalidCredentialsError } from '../../domain/errors/auth.errors';
 import type { IUserRepository } from '../../domain/repositories/user.repository.interface';
 import { AUTH_USER_REPOSITORY } from '../../domain/repositories/user.repository.interface';
 import type { IAuthTokenService } from '../ports/auth-token.port';
 import { AUTH_TOKEN_SERVICE } from '../ports/auth-token.port';
+import type { IPasswordHasher } from '../ports/password-hasher.port';
+import { AUTH_PASSWORD_HASHER } from '../ports/password-hasher.port';
 import { LoginUseCase } from './login.use-case';
 
 describe('LoginUseCase', () => {
   let useCase: LoginUseCase;
   let mockUserRepo: jest.Mocked<IUserRepository>;
   let mockAuthTokenService: jest.Mocked<IAuthTokenService>;
-
-  const validPasswordHash = bcrypt.hashSync('password123', 10);
+  let mockPasswordHasher: jest.Mocked<IPasswordHasher>;
 
   beforeEach(async () => {
     mockUserRepo = {
@@ -31,12 +31,25 @@ describe('LoginUseCase', () => {
     mockAuthTokenService = {
       sign: jest.fn().mockReturnValue('mock-access-token'),
     };
+    mockPasswordHasher = {
+      hash: jest.fn(),
+      compare: jest.fn().mockResolvedValue(true),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         { provide: AUTH_USER_REPOSITORY, useValue: mockUserRepo },
         { provide: AUTH_TOKEN_SERVICE, useValue: mockAuthTokenService },
-        LoginUseCase,
+        { provide: AUTH_PASSWORD_HASHER, useValue: mockPasswordHasher },
+        {
+          provide: LoginUseCase,
+          useFactory: (
+            userRepo: IUserRepository,
+            authTokenService: IAuthTokenService,
+            passwordHasher: IPasswordHasher,
+          ) => new LoginUseCase(userRepo, authTokenService, passwordHasher),
+          inject: [AUTH_USER_REPOSITORY, AUTH_TOKEN_SERVICE, AUTH_PASSWORD_HASHER],
+        },
       ],
     }).compile();
 
@@ -47,10 +60,11 @@ describe('LoginUseCase', () => {
     mockUserRepo.findByEmailForLogin.mockResolvedValue({
       id: 'user-1',
       email: 'admin@test.com',
-      passwordHash: validPasswordHash,
+      passwordHash: 'any-hash',
       isActive: true,
       role: { slug: 'admin' },
     });
+    mockPasswordHasher.compare.mockResolvedValue(true);
 
     const result = await useCase.run({
       email: 'admin@test.com',
@@ -77,7 +91,7 @@ describe('LoginUseCase', () => {
     mockUserRepo.findByEmailForLogin.mockResolvedValue({
       id: 'user-1',
       email: 'inactive@test.com',
-      passwordHash: validPasswordHash,
+      passwordHash: 'any-hash',
       isActive: false,
       role: { slug: 'member' },
     });
@@ -91,10 +105,11 @@ describe('LoginUseCase', () => {
     mockUserRepo.findByEmailForLogin.mockResolvedValue({
       id: 'user-1',
       email: 'admin@test.com',
-      passwordHash: validPasswordHash,
+      passwordHash: 'any-hash',
       isActive: true,
       role: { slug: 'admin' },
     });
+    mockPasswordHasher.compare.mockResolvedValue(false);
 
     await expect(
       useCase.run({ email: 'admin@test.com', password: 'wrong' }),
