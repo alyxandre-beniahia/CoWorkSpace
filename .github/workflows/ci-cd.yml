@@ -55,8 +55,30 @@ jobs:
         working-directory: ./backend
         run: npm run build
 
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Create test databases
+        run: |
+          PGPASSWORD=cowork_dev psql -h 127.0.0.1 -p 5432 -U cowork -d postgres -c "CREATE DATABASE coworkspace_test;"
+          PGPASSWORD=cowork_dev psql -h 127.0.0.1 -p 5432 -U cowork -d postgres -c "CREATE DATABASE coworkspace_functional;"
+
+      - name: Migrate test DB (for unit + integration tests)
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://cowork:cowork_dev@127.0.0.1:5432/coworkspace_test
+        run: npx prisma migrate deploy
+
+      - name: Seed test DB (rôles et utilisateurs pour les specs use-case)
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://cowork:cowork_dev@127.0.0.1:5432/coworkspace_test
+        run: npm run prisma:seed
+
       - name: Backend unit tests (use cases)
         working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://cowork:cowork_dev@127.0.0.1:5432/coworkspace_test
         run: npm test -- --ci
 
       - name: Install frontend dependencies
@@ -70,20 +92,6 @@ jobs:
       - name: Build frontend
         working-directory: ./frontend
         run: npm run build
-
-      - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
-
-      - name: Create test databases
-        run: |
-          PGPASSWORD=cowork_dev psql -h 127.0.0.1 -p 5432 -U cowork -d postgres -c "CREATE DATABASE coworkspace_test;"
-          PGPASSWORD=cowork_dev psql -h 127.0.0.1 -p 5432 -U cowork -d postgres -c "CREATE DATABASE coworkspace_functional;"
-
-      - name: Migrate integration DB
-        working-directory: ./backend
-        env:
-          DATABASE_URL: postgresql://cowork:cowork_dev@127.0.0.1:5432/coworkspace_test
-        run: npx prisma migrate deploy
 
       - name: Setup functional DB (migrate + seed)
         working-directory: ./backend
