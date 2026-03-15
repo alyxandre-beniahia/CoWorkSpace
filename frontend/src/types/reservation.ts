@@ -28,6 +28,8 @@ export type ReservationDetail = ReservationCalendarItem & {
   userName: string;
   userEmail: string;
   recurrenceGroupId?: string | null;
+  recurrenceRule?: string | null;
+  recurrenceEndAt?: string | null;
 };
 
 /** Payload pour POST /reservations (création). */
@@ -42,6 +44,8 @@ export type CreateReservationBody = {
   recurrenceEndAt?: string | null;
   /** Fuseau IANA pour récurrence (même heure locale, ex. Europe/Paris). */
   timeZone?: string | null;
+  /** Réservé pour cet utilisateur (admin uniquement). */
+  userId?: string | null;
 };
 
 /** Payload pour PATCH /reservations/:id (modification). */

@@ -43,7 +43,10 @@ export class ReservationRepository implements IReservationRepository {
     });
 
     return reservations.map((r: (typeof reservations)[number]) => {
-      const maskPrivate = filters.currentUserId && r.isPrivate && r.userId !== filters.currentUserId;
+      const unmaskForAdmin = filters.role === 'admin';
+      const maskPrivate =
+        !unmaskForAdmin &&
+        Boolean(filters.currentUserId && r.isPrivate && r.userId !== filters.currentUserId);
       const isOwner = Boolean(filters.currentUserId && r.userId === filters.currentUserId);
       return {
         id: r.id,
@@ -93,6 +96,8 @@ export class ReservationRepository implements IReservationRepository {
       title: maskPrivate ? null : r.title,
       isPrivate: r.isPrivate,
       recurrenceGroupId: r.recurrenceGroupId ?? null,
+      recurrenceRule: r.recurrenceRule ?? null,
+      recurrenceEndAt: r.recurrenceEndAt ?? null,
       isOwner,
       userName: maskPrivate ? '' : `${r.user.firstname} ${r.user.lastname}`,
       userEmail: maskPrivate ? '' : r.user.email,

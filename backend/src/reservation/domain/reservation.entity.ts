@@ -23,6 +23,8 @@ export type ReservationWithDetails = ReservationListItem & {
   userName: string;
   userEmail: string;
   recurrenceGroupId?: string | null;
+  recurrenceRule?: string | null;
+  recurrenceEndAt?: Date | null;
 };
 
 export type CreateReservationInput = {
