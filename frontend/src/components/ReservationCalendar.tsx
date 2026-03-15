@@ -56,97 +56,97 @@ export function ReservationCalendar({
   selectOverlap = false,
 }: ReservationCalendarProps) {
   return (
-    <FullCalendar
-      className="reservation-calendar"
-      plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-      initialView="timeGridWeek"
-      locale="fr"
-      firstDay={1}
-      headerToolbar={{
-        left: "prev,next today",
-        center: "title",
-        right: "dayGridMonth,timeGridWeek",
-      }}
-      views={{
-        dayGridMonth: { buttonText: "Mois" },
-        timeGridWeek: { buttonText: "Semaine" },
-      }}
-      events={events}
-      height={height}
-      datesSet={(arg) => {
-        if (onDatesSet && arg.start && arg.end) onDatesSet(arg.start, arg.end);
-      }}
-      /* Réservations autorisées uniquement de 7h à 20h. */
-      slotMinTime="07:00:00"
-      slotMaxTime="20:00:00"
-      scrollTime="07:00:00"
-      allDaySlot={false}
-      slotEventOverlap={slotEventOverlap}
-      eventOrder={slotEventOverlap === false ? 'extendedProps.spaceName,title' : undefined}
-      selectable={selectable}
-      selectMirror
-      selectOverlap={selectOverlap}
-      // Si selectOverlap=false, les créneaux déjà occupés ne sont pas sélectionnables (US-RES-01).
-      select={(arg: DateSelectArg) => {
-        if (!onSelectSlot) return;
-        onSelectSlot({ start: arg.start, end: arg.end });
-      }}
-      editable={editableEvents}
-      eventClick={(arg: EventClickArg) => {
-        if (!onEventClick) return;
-        const { event } = arg;
-        const start = event.start;
-        const end = event.end;
-        if (!start || !end) return;
-        const extended = (event.extendedProps ?? {}) as ReservationEventExtendedProps;
-        const canEdit = Boolean(extended.canEdit);
-        onEventClick({
-          id: String(event.id),
-          start,
-          end,
-          canEdit,
-        });
-      }}
-      eventDrop={(arg: EventDropArg) => {
-        if (!onEventChange) return;
-        const extended = (arg.event.extendedProps ?? {}) as ReservationEventExtendedProps;
-        const canEdit = Boolean(extended.canEdit);
-        if (!editableEvents || !canEdit) {
-          arg.revert();
-          return;
-        }
-        const start = arg.event.start;
-        const end = arg.event.end;
-        if (!start || !end) {
-          arg.revert();
-          return;
-        }
-        onEventChange({
-          id: String(arg.event.id),
-          start,
-          end,
-        });
-      }}
-      eventResize={(arg: EventResizeDoneArg) => {
-        if (!onEventChange) return;
-        const extended = (arg.event.extendedProps ?? {}) as ReservationEventExtendedProps;
-        const canEdit = Boolean(extended.canEdit);
-        if (!editableEvents || !canEdit) {
-          arg.revert();
-          return;
-        }
-        const start = arg.event.start;
-        const end = arg.event.end;
-        if (!start || !end) {
-          arg.revert();
-          return;
-        }
-        onEventChange({
-          id: String(arg.event.id),
-          start,
-          end,
-        });
-      }}
-    />
+    <div className="reservation-calendar">
+      <FullCalendar
+        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        initialView="timeGridWeek"
+        locale="fr"
+        firstDay={1}
+        headerToolbar={{
+          left: "prev,next today",
+          center: "title",
+          right: "dayGridMonth,timeGridWeek",
+        }}
+        buttonText={{
+          month: "Mois",
+          week: "Semaine",
+          today: "Aujourd'hui",
+        }}
+        events={events}
+        height={height}
+        datesSet={(arg) => {
+          if (onDatesSet && arg.start && arg.end) onDatesSet(arg.start, arg.end);
+        }}
+        slotMinTime="07:00:00"
+        slotMaxTime="20:00:00"
+        scrollTime="07:00:00"
+        allDaySlot={false}
+        slotEventOverlap={slotEventOverlap}
+        eventOrder={slotEventOverlap === false ? "extendedProps.spaceName,title" : "start,title"}
+        selectable={selectable}
+        selectMirror
+        selectOverlap={selectOverlap}
+        select={(arg: DateSelectArg) => {
+          if (!onSelectSlot) return;
+          onSelectSlot({ start: arg.start, end: arg.end });
+        }}
+        editable={editableEvents}
+        eventClick={(arg: EventClickArg) => {
+          if (!onEventClick) return;
+          const { event } = arg;
+          const start = event.start;
+          const end = event.end;
+          if (!start || !end) return;
+          const extended = (event.extendedProps ?? {}) as ReservationEventExtendedProps;
+          const canEdit = Boolean(extended.canEdit);
+          onEventClick({
+            id: String(event.id),
+            start,
+            end,
+            canEdit,
+          });
+        }}
+        eventDrop={(arg: EventDropArg) => {
+          if (!onEventChange) return;
+          const extended = (arg.event.extendedProps ?? {}) as ReservationEventExtendedProps;
+          const canEdit = Boolean(extended.canEdit);
+          if (!editableEvents || !canEdit) {
+            arg.revert();
+            return;
+          }
+          const start = arg.event.start;
+          const end = arg.event.end;
+          if (!start || !end) {
+            arg.revert();
+            return;
+          }
+          onEventChange({
+            id: String(arg.event.id),
+            start,
+            end,
+          });
+        }}
+        eventResize={(arg: EventResizeDoneArg) => {
+          if (!onEventChange) return;
+          const extended = (arg.event.extendedProps ?? {}) as ReservationEventExtendedProps;
+          const canEdit = Boolean(extended.canEdit);
+          if (!editableEvents || !canEdit) {
+            arg.revert();
+            return;
+          }
+          const start = arg.event.start;
+          const end = arg.event.end;
+          if (!start || !end) {
+            arg.revert();
+            return;
+          }
+          onEventChange({
+            id: String(arg.event.id),
+            start,
+            end,
+          });
+        }}
+      />
+    </div>
   );
 }
