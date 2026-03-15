@@ -1,5 +1,5 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../../database/prisma.service';
 import { EmailService } from '../../notification/infrastructure/email.service';
 
 type ValidateRegistrationResult = { message: string };

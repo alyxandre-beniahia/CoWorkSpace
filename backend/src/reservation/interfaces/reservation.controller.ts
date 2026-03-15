@@ -10,7 +10,7 @@ import {
   Request,
 } from '@nestjs/common';
 import type { Request as ExpressRequest } from 'express';
-import { JwtAuthGuard } from '../../auth/infrastructure/jwt-auth.guard';
+import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { CreateReservationUseCase } from '../application/create-reservation.use-case';
 import { UpdateReservationUseCase } from '../application/update-reservation.use-case';
 import { CancelReservationUseCase } from '../application/cancel-reservation.use-case';

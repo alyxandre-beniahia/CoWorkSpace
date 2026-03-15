@@ -1,6 +1,6 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/infrastructure/jwt-auth.guard';
-import { AdminGuard } from '../auth/infrastructure/admin.guard';
+import { JwtAuthGuard } from '../shared/guards/jwt-auth.guard';
+import { AdminGuard } from '../shared/guards/admin.guard';
 import { GetDashboardStatsUseCase } from './application/get-dashboard-stats.use-case';
 import { GetActivityUseCase } from './application/get-activity.use-case';
 

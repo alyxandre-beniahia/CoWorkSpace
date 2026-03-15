@@ -1,7 +1,7 @@
 import { Controller, Get, Patch, Param, Query, UseGuards, Request } from '@nestjs/common';
 import type { Request as ExpressRequest } from 'express';
-import { JwtAuthGuard } from '../auth/infrastructure/jwt-auth.guard';
-import { AdminGuard } from '../auth/infrastructure/admin.guard';
+import { JwtAuthGuard } from '../shared/guards/jwt-auth.guard';
+import { AdminGuard } from '../shared/guards/admin.guard';
 import { ListMembersUseCase, type ListMembersFilter } from './application/list-members.use-case';
 import { ValidateRegistrationUseCase } from './application/validate-registration.use-case';
 import { RejectRegistrationUseCase } from './application/reject-registration.use-case';

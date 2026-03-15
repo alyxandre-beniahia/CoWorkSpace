@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { PrismaModule } from '../../prisma/prisma.module';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaModule } from '../../database/prisma.module';
+import { PrismaService } from '../../database/prisma.service';
 import { SpaceModule } from '../space.module';
 import { ListSpacesUseCase } from './list-spaces.use-case';
 
