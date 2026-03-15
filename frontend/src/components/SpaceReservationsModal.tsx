@@ -391,12 +391,13 @@ export function SpaceReservationsModal({
     }
   }
 
-  async function handleCancelReservation() {
-    if (!space || !token || !selectedReservation) return;
+  async function handleCancelReservation(reservationId?: string) {
+    const idToCancel = reservationId ?? detailReservationId ?? selectedReservation?.id;
+    if (!space || !token || !idToCancel) return;
     if (!window.confirm("Annuler cette réservation ?")) return;
     setSubmitting(true);
     try {
-      await api(`/reservations/${selectedReservation.id}/annuler`, {
+      await api(`/reservations/${idToCancel}/annuler`, {
         method: "PATCH",
         token,
       });
@@ -901,7 +902,7 @@ export function SpaceReservationsModal({
                   variant="outline"
                   className="min-w-[160px]"
                   disabled={!selectedReservation || submitting}
-                  onClick={handleCancelReservation}
+                  onClick={() => handleCancelReservation()}
                 >
                   Annuler la réservation
                 </Button>
