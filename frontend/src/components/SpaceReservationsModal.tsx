@@ -9,6 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -84,6 +85,7 @@ export function SpaceReservationsModal({
   const [recurrenceEndAt, setRecurrenceEndAt] = useState<Date | null>(null);
   const [seats, setSeats] = useState<SeatItem[]>([]);
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
+  const [reservationTitle, setReservationTitle] = useState("");
 
   const isOpenSpace = space?.type === "OPEN_SPACE";
 
@@ -179,6 +181,7 @@ export function SpaceReservationsModal({
       setSelectedDate(new Date());
       setSelectedReservation(null);
       setIsPrivate(false);
+      setReservationTitle("");
     }
   }, [open]);
 
@@ -246,7 +249,7 @@ export function SpaceReservationsModal({
         spaceId: space.id,
         startDatetime: selectedSlot.start.toISOString(),
         endDatetime: selectedSlot.end.toISOString(),
-        title: null,
+        title: reservationTitle.trim() || null,
         isPrivate,
       };
       if (selectedSeatId) body.seatId = selectedSeatId;
@@ -738,6 +741,22 @@ export function SpaceReservationsModal({
                   {submitting ? "Réservation…" : "Réserver ce créneau"}
                 </Button>
               </div>
+              {selectedSlot && (
+                <div className="grid gap-2">
+                  <Label htmlFor="home-reservation-title" className="text-foreground">
+                    Titre (optionnel)
+                  </Label>
+                  <Input
+                    id="home-reservation-title"
+                    type="text"
+                    placeholder="Ex. Réunion équipe, focus…"
+                    value={reservationTitle}
+                    onChange={(e) => setReservationTitle(e.target.value)}
+                    maxLength={200}
+                    className="max-w-lg"
+                  />
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"

@@ -90,14 +90,11 @@ export function AdminReservationCalendar() {
             item.isPrivate && !item.isOwner && !isAdmin
               ? 'Occupé'
               : (item.title ?? 'Réservation')
-          const displayTitle = selectedSpaceId
-            ? (item.seatCode ? `${effectiveTitle} – ${item.seatCode}` : effectiveTitle)
-            : `${item.spaceName} · ${item.seatCode ? `${effectiveTitle} (${item.seatCode})` : effectiveTitle}`
           const color = colorForSpaceId(item.spaceId)
 
           return {
             id: item.id,
-            title: displayTitle,
+            title: effectiveTitle,
             start: item.startDatetime,
             end: item.endDatetime,
             display: 'block',
@@ -147,6 +144,19 @@ export function AdminReservationCalendar() {
             </SelectContent>
           </Select>
         </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-2 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Légende :</span>
+          {spaces.filter((s) => s.type !== 'OTHER').map((s) => (
+            <span key={s.id} className="flex items-center gap-1.5">
+              <span
+                className="size-3 shrink-0 rounded-sm border border-white shadow-sm"
+                style={{ backgroundColor: colorForSpaceId(s.id) }}
+                aria-hidden
+              />
+              <span>{s.name}</span>
+            </span>
+          ))}
+        </div>
       </CardHeader>
       <CardContent>
         <ReservationCalendar
@@ -156,6 +166,8 @@ export function AdminReservationCalendar() {
           selectable
           selectOverlap
           editableEvents={false}
+          displayEventTime={false}
+          compactTitles
           onDatesSet={(start) => setWeekStart(getWeekRange(start).start)}
           onSelectSlot={(slot) => {
             setSelectedSlot(slot)
