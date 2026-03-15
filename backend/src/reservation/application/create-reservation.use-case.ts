@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { ReservationRepository } from '../infrastructure/reservation.repository';
 import type { CreateReservationInput } from '../domain/reservation.entity';
@@ -15,7 +15,12 @@ import {
 export class CreateReservationUseCase {
   constructor(private readonly reservationRepository: ReservationRepository) {}
 
-  async run(userId: string, dto: CreateReservationDto) {
+  async run(userId: string, dto: CreateReservationDto, role?: string) {
+    if (dto.userId != null && role !== 'admin') {
+      throw new ForbiddenException('Seul un administrateur peut réserver pour un autre utilisateur.');
+    }
+    const effectiveUserId =
+      role === 'admin' && dto.userId ? dto.userId : userId;
     const start = new Date(dto.startDatetime);
     const end = new Date(dto.endDatetime);
 
@@ -82,7 +87,7 @@ export class CreateReservationUseCase {
       const inputs: CreateReservationInput[] = occurrences.map((occ) => ({
         spaceId: dto.spaceId,
         seatId: dto.seatId ?? null,
-        userId,
+        userId: effectiveUserId,
         startDatetime: occ.startDatetime,
         endDatetime: occ.endDatetime,
         title: dto.title ?? null,
@@ -111,7 +116,7 @@ export class CreateReservationUseCase {
     return this.reservationRepository.create({
       spaceId: dto.spaceId,
       seatId: dto.seatId ?? null,
-      userId,
+      userId: effectiveUserId,
       startDatetime: start,
       endDatetime: end,
       title: dto.title ?? null,

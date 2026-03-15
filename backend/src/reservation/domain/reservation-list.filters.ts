@@ -10,4 +10,6 @@ export type ReservationListFilters = {
   to?: Date;
   /** Pour masquer les détails des réservations privées dont l'utilisateur n'est pas propriétaire */
   currentUserId?: string;
+  /** Si 'admin', ne pas masquer les réservations privées (voir tous les détails). */
+  role?: string;
 };

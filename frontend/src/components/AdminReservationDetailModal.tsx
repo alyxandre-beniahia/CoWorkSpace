@@ -10,9 +10,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import type { ReservationDetail, UpdateReservationBody } from "@/types/reservation";
+import { buildRecurrenceRule, type RecurrenceFreq } from "@/lib/recurrence";
 import { toast } from "sonner";
 
 type AdminReservationDetailModalProps = {
@@ -54,6 +62,10 @@ export function AdminReservationDetailModal({
   const [editEnd, setEditEnd] = useState("");
   const [editTitle, setEditTitle] = useState("");
   const [editIsPrivate, setEditIsPrivate] = useState(false);
+  const [editIsRecurring, setEditIsRecurring] = useState(false);
+  const [editRecurrenceFreq, setEditRecurrenceFreq] = useState<RecurrenceFreq>("daily");
+  const [editRecurrenceWeekdays, setEditRecurrenceWeekdays] = useState<number[]>([]);
+  const [editRecurrenceEndAt, setEditRecurrenceEndAt] = useState<string>("");
 
   useEffect(() => {
     if (!open || !reservationId || !token) {
@@ -69,6 +81,25 @@ export function AdminReservationDetailModal({
         setEditEnd(toDatetimeLocal(data.endDatetime));
         setEditTitle(data.title ?? "");
         setEditIsPrivate(data.isPrivate);
+        const hasRecurrence = Boolean(data.recurrenceRule || data.recurrenceGroupId);
+        setEditIsRecurring(hasRecurrence);
+        if (data.recurrenceRule?.includes("WEEKLY")) {
+          setEditRecurrenceFreq("weekly");
+          const byday = data.recurrenceRule.match(/BYDAY=([A-Z,]+)/)?.[1];
+          if (byday) {
+            const days = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+            setEditRecurrenceWeekdays(
+              byday.split(",").map((d) => days.indexOf(d)).filter((i) => i >= 0),
+            );
+          }
+        } else {
+          setEditRecurrenceFreq("daily");
+        }
+        setEditRecurrenceEndAt(
+          data.recurrenceEndAt
+            ? new Date(data.recurrenceEndAt).toISOString().slice(0, 10)
+            : "",
+        );
       })
       .catch(() => {
         toast.error("Impossible de charger la réservation.");
@@ -85,6 +116,10 @@ export function AdminReservationDetailModal({
       toast.error("La fin doit être après le début.");
       return;
     }
+    if (editIsRecurring && !editRecurrenceEndAt) {
+      toast.error("Indiquez jusqu'à quelle date répéter la réservation.");
+      return;
+    }
     setSubmitting(true);
     try {
       const body: UpdateReservationBody = {
@@ -93,6 +128,19 @@ export function AdminReservationDetailModal({
         title: editTitle || null,
         isPrivate: editIsPrivate,
       };
+      if (editIsRecurring && editRecurrenceEndAt) {
+        const rule = buildRecurrenceRule(
+          editRecurrenceFreq,
+          editRecurrenceFreq === "weekly" ? editRecurrenceWeekdays : [],
+        );
+        if (rule) {
+          body.recurrenceRule = rule;
+          body.recurrenceEndAt = new Date(editRecurrenceEndAt + "T23:59:59").toISOString();
+        }
+      } else {
+        body.recurrenceRule = null;
+        body.recurrenceEndAt = null;
+      }
       await api(`/reservations/${detail.id}`, {
         method: "PATCH",
         token,
@@ -166,23 +214,26 @@ export function AdminReservationDetailModal({
                 <div>
                   <dt className="text-muted-foreground">Réservé par</dt>
                   <dd className="font-medium">
-                    {detail.userName} ({detail.userEmail})
+                    {detail.userName?.trim() || detail.userId || "—"}
                   </dd>
                 </div>
-
-                {(detail.title || detail.isPrivate) && (
-                  <>
-                    {detail.title && (
-                      <div>
-                        <dt className="text-muted-foreground">Titre</dt>
-                        <dd>{detail.title}</dd>
-                      </div>
-                    )}
-                    <div>
-                      <dt className="text-muted-foreground">Privée</dt>
-                      <dd>{detail.isPrivate ? "Oui" : "Non"}</dd>
-                    </div>
-                  </>
+                <div>
+                  <dt className="text-muted-foreground">Titre</dt>
+                  <dd>{detail.title ?? "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Privée</dt>
+                  <dd>{detail.isPrivate ? "Oui" : "Non"}</dd>
+                </div>
+                {(detail.recurrenceGroupId || detail.recurrenceRule) && (
+                  <div>
+                    <dt className="text-muted-foreground">Récurrence</dt>
+                    <dd>
+                      Oui
+                      {detail.recurrenceEndAt &&
+                        ` jusqu'au ${new Date(detail.recurrenceEndAt).toLocaleDateString("fr-FR")}`}
+                    </dd>
+                  </div>
                 )}
                 <div>
                   <dt className="text-muted-foreground">Début</dt>
@@ -235,6 +286,90 @@ export function AdminReservationDetailModal({
                   />
                   Réservation privée
                 </label>
+                <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <input
+                      type="checkbox"
+                      checked={editIsRecurring}
+                      onChange={(e) => setEditIsRecurring(e.target.checked)}
+                      className="size-4 rounded border-input"
+                    />
+                    Répéter
+                  </label>
+                  {editIsRecurring && (
+                    <>
+                      <div className="grid gap-2">
+                        <Label className="text-xs">Fréquence</Label>
+                        <Select
+                          value={editRecurrenceFreq}
+                          onValueChange={(v) =>
+                            setEditRecurrenceFreq(v as RecurrenceFreq)
+                          }
+                        >
+                          <SelectTrigger className="h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="daily">Quotidien</SelectItem>
+                            <SelectItem value="weekly">Hebdomadaire</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {editRecurrenceFreq === "weekly" && (
+                        <div className="grid gap-2">
+                          <Label className="text-xs">Jour(s)</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              { i: 0, label: "Dim" },
+                              { i: 1, label: "Lun" },
+                              { i: 2, label: "Mar" },
+                              { i: 3, label: "Mer" },
+                              { i: 4, label: "Jeu" },
+                              { i: 5, label: "Ven" },
+                              { i: 6, label: "Sam" },
+                            ].map(({ i, label }) => (
+                              <label
+                                key={i}
+                                className="flex cursor-pointer items-center gap-1.5 text-xs"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={editRecurrenceWeekdays.includes(i)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setEditRecurrenceWeekdays((prev) =>
+                                        [...prev, i].sort((a, b) => a - b),
+                                      );
+                                    } else {
+                                      setEditRecurrenceWeekdays((prev) =>
+                                        prev.filter((d) => d !== i),
+                                      );
+                                    }
+                                  }}
+                                  className="size-3.5 rounded border-input"
+                                />
+                                {label}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-recurrence-end" className="text-xs">
+                          Répéter jusqu&apos;au
+                        </Label>
+                        <input
+                          id="edit-recurrence-end"
+                          type="date"
+                          value={editRecurrenceEndAt}
+                          onChange={(e) => setEditRecurrenceEndAt(e.target.value)}
+                          min={editStart.slice(0, 10)}
+                          className="flex h-8 rounded-md border border-input bg-background px-2 text-sm"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             )}
           </div>

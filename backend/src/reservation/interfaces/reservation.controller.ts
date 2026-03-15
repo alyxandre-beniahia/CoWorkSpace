@@ -34,7 +34,7 @@ export class ReservationController {
   @Post()
   @UseGuards(JwtAuthGuard)
   async create(@Request() req: AuthRequest, @Body() dto: CreateReservationDto) {
-    return this.createReservationUseCase.run(req.user.userId, dto);
+    return this.createReservationUseCase.run(req.user.userId, dto, req.user.role);
   }
 
   @Get()
@@ -48,14 +48,17 @@ export class ReservationController {
     @Query('end') end?: string,
     @Request() req?: AuthRequest,
   ) {
-    const filters: { userId?: string; spaceId?: string; from?: Date; to?: Date; currentUserId?: string } = {};
+    const filters: { userId?: string; spaceId?: string; from?: Date; to?: Date; currentUserId?: string; role?: string } = {};
     if (userId) filters.userId = userId;
     if (spaceId) filters.spaceId = spaceId;
     const fromVal = from ?? start;
     const toVal = to ?? end;
     if (fromVal) filters.from = new Date(fromVal);
     if (toVal) filters.to = new Date(toVal);
-    if (req?.user) filters.currentUserId = req.user.userId;
+    if (req?.user) {
+      filters.currentUserId = req.user.userId;
+      filters.role = req.user.role;
+    }
     // Par défaut, un membre ne voit que ses réservations (sauf si spaceId fourni = vue calendrier d'un espace)
     if (req?.user?.role !== 'admin' && !filters.userId && !filters.spaceId) {
       filters.userId = req!.user.userId;

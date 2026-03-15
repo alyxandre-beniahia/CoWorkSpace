@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { EventInput } from '@fullcalendar/core'
-import { ReservationCalendar } from '@/components/ReservationCalendar'
+import { ReservationCalendar, type CalendarSlot } from '@/components/ReservationCalendar'
 import { AdminReservationDetailModal } from '@/components/AdminReservationDetailModal'
+import { AdminCreateReservationModal } from '@/components/AdminCreateReservationModal'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Select,
@@ -51,13 +52,16 @@ function colorForSpaceId(spaceId: string): string {
 }
 
 export function AdminReservationCalendar() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
+  const isAdmin = user?.role?.slug === 'admin'
   const [events, setEvents] = useState<EventInput[]>([])
   const [spaces, setSpaces] = useState<SpaceListItem[]>([])
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null)
   const [weekStart, setWeekStart] = useState<Date>(() => getWeekRange(new Date()).start)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
   const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null)
+  const [createModalOpen, setCreateModalOpen] = useState(false)
+  const [selectedSlot, setSelectedSlot] = useState<CalendarSlot | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
@@ -82,9 +86,10 @@ export function AdminReservationCalendar() {
     api<ReservationListItem[]>(`/reservations?${params.toString()}`, { token })
       .then((items) => {
         const mapped: EventInput[] = items.map((item) => {
-          const effectiveTitle = item.isPrivate && !item.isOwner
-            ? 'Occupé'
-            : (item.title ?? 'Réservation')
+          const effectiveTitle =
+            item.isPrivate && !item.isOwner && !isAdmin
+              ? 'Occupé'
+              : (item.title ?? 'Réservation')
           const displayTitle = selectedSpaceId
             ? (item.seatCode ? `${effectiveTitle} – ${item.seatCode}` : effectiveTitle)
             : `${item.spaceName} · ${item.seatCode ? `${effectiveTitle} (${item.seatCode})` : effectiveTitle}`
@@ -116,8 +121,9 @@ export function AdminReservationCalendar() {
     <Card>
       <CardHeader>
         <CardTitle>Planning des réservations</CardTitle>
-        <CardDescription>
-          Vue d&apos;ensemble des réservations. Filtrez par espace pour affiner.
+        <CardDescription className="space-y-1">
+          <span className="block">Vue d&apos;ensemble des réservations. Filtrez par espace. Glissez sur un créneau libre pour créer une réservation.</span>
+          <span className="block">Pour des réservations plus précises, aller sur la page d&apos;accueil.</span>
         </CardDescription>
         <div className="pt-2">
           <Select
@@ -147,9 +153,14 @@ export function AdminReservationCalendar() {
           events={events}
           height={630}
           slotEventOverlap={false}
-          selectable={false}
+          selectable
+          selectOverlap
           editableEvents={false}
           onDatesSet={(start) => setWeekStart(getWeekRange(start).start)}
+          onSelectSlot={(slot) => {
+            setSelectedSlot(slot)
+            setCreateModalOpen(true)
+          }}
           onEventClick={({ id }) => {
             setSelectedReservationId(id)
             setDetailModalOpen(true)
@@ -160,6 +171,15 @@ export function AdminReservationCalendar() {
           onOpenChange={setDetailModalOpen}
           reservationId={selectedReservationId}
           onUpdated={() => setRefreshKey((k) => k + 1)}
+        />
+        <AdminCreateReservationModal
+          open={createModalOpen}
+          onOpenChange={(open) => {
+            setCreateModalOpen(open)
+            if (!open) setSelectedSlot(null)
+          }}
+          slot={selectedSlot}
+          onCreated={() => setRefreshKey((k) => k + 1)}
         />
       </CardContent>
     </Card>
