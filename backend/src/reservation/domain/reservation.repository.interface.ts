@@ -20,7 +20,11 @@ export type ReservationCalendarItem = {
 
 export interface IReservationRepository {
   list(filters: ReservationListFilters): Promise<ReservationListItem[]>;
-  findById(id: string, currentUserId?: string): Promise<ReservationWithDetails | null>;
+  findById(
+    id: string,
+    currentUserId?: string,
+    options?: { unmaskPrivate?: boolean },
+  ): Promise<ReservationWithDetails | null>;
   create(input: CreateReservationInput): Promise<ReservationWithDetails>;
   createMany(inputs: CreateReservationInput[]): Promise<ReservationWithDetails[]>;
   update(id: string, input: UpdateReservationInput): Promise<ReservationWithDetails | null>;

@@ -7,12 +7,13 @@ export type CancelScope = 'this' | 'all';
 export class CancelReservationUseCase {
   constructor(private readonly reservationRepository: ReservationRepository) {}
 
-  async run(reservationId: string, userId: string, scope: CancelScope = 'this') {
+  async run(reservationId: string, userId: string, scope: CancelScope = 'this', role?: string) {
     const existing = await this.reservationRepository.findById(reservationId, userId);
     if (!existing) {
       throw new NotFoundException('Réservation introuvable.');
     }
-    if (existing.userId !== userId) {
+    const isAdmin = role === 'admin';
+    if (!isAdmin && existing.userId !== userId) {
       throw new ForbiddenException('Vous ne pouvez annuler que vos propres réservations.');
     }
 

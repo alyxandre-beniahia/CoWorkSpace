@@ -4,6 +4,12 @@ import { ReservationRepository } from '../infrastructure/reservation.repository'
 import type { CreateReservationInput } from '../domain/reservation.entity';
 import type { CreateReservationDto } from './dto/create-reservation.dto';
 import { expandRecurrence } from './recurrence.utils';
+import {
+  isWithinReservationWindow,
+  isStartInFuture,
+  RESERVATION_WINDOW_MESSAGE,
+  RESERVATION_FUTURE_MESSAGE,
+} from './reservation-window.utils';
 
 @Injectable()
 export class CreateReservationUseCase {
@@ -15,6 +21,12 @@ export class CreateReservationUseCase {
 
     if (end <= start) {
       throw new BadRequestException('La date de fin doit être après la date de début.');
+    }
+    if (!isWithinReservationWindow(start, end)) {
+      throw new BadRequestException(RESERVATION_WINDOW_MESSAGE);
+    }
+    if (!isStartInFuture(start)) {
+      throw new BadRequestException(RESERVATION_FUTURE_MESSAGE);
     }
 
     const isRecurring = dto.recurrenceRule && dto.recurrenceEndAt;
@@ -43,6 +55,12 @@ export class CreateReservationUseCase {
       }
 
       for (const occ of occurrences) {
+        if (!isWithinReservationWindow(occ.startDatetime, occ.endDatetime)) {
+          throw new BadRequestException(RESERVATION_WINDOW_MESSAGE);
+        }
+        if (!isStartInFuture(occ.startDatetime)) {
+          throw new BadRequestException(RESERVATION_FUTURE_MESSAGE);
+        }
         const hasOverlap = await this.reservationRepository.hasOverlap(
           dto.spaceId,
           occ.startDatetime,

@@ -62,7 +62,11 @@ export class ReservationRepository implements IReservationRepository {
     });
   }
 
-  async findById(id: string, currentUserId?: string): Promise<ReservationWithDetails | null> {
+  async findById(
+    id: string,
+    currentUserId?: string,
+    options?: { unmaskPrivate?: boolean },
+  ): Promise<ReservationWithDetails | null> {
     const r = await this.prisma.reservation.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -73,7 +77,9 @@ export class ReservationRepository implements IReservationRepository {
     });
     if (!r) return null;
 
-    const maskPrivate = currentUserId && r.isPrivate && r.userId !== currentUserId;
+    const unmask = options?.unmaskPrivate === true;
+    const maskPrivate =
+      !unmask && Boolean(currentUserId && r.isPrivate && r.userId !== currentUserId);
     const isOwner = Boolean(currentUserId && r.userId === currentUserId);
     return {
       id: r.id,

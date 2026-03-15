@@ -5,6 +5,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { AdminController } from './admin.controller';
 import { AdminSpacesController } from './admin-spaces.controller';
 import { AdminEquipementsController } from './admin-equipements.controller';
+import { AdminDashboardController } from './admin-dashboard.controller';
 import { ListMembersUseCase } from './application/list-members.use-case';
 import { ValidateRegistrationUseCase } from './application/validate-registration.use-case';
 import { RejectRegistrationUseCase } from './application/reject-registration.use-case';
@@ -20,12 +21,14 @@ import { CreateEquipementUseCase } from './application/create-equipement.use-cas
 import { UpdateEquipementUseCase } from './application/update-equipement.use-case';
 import { DeleteEquipementUseCase } from './application/delete-equipement.use-case';
 import { GetEquipementAvailabilityUseCase } from './application/get-equipement-availability.use-case';
+import { GetDashboardStatsUseCase } from './application/get-dashboard-stats.use-case';
+import { GetActivityUseCase } from './application/get-activity.use-case';
 import { AdminSpaceRepository } from './infrastructure/admin-space.repository';
 import { AdminEquipementRepository } from './infrastructure/admin-equipement.repository';
 
 @Module({
   imports: [AuthModule, NotificationModule, PrismaModule],
-  controllers: [AdminController, AdminSpacesController, AdminEquipementsController],
+  controllers: [AdminController, AdminSpacesController, AdminEquipementsController, AdminDashboardController],
   providers: [
     ListMembersUseCase,
     ValidateRegistrationUseCase,
@@ -44,6 +47,8 @@ import { AdminEquipementRepository } from './infrastructure/admin-equipement.rep
     UpdateEquipementUseCase,
     DeleteEquipementUseCase,
     GetEquipementAvailabilityUseCase,
+    GetDashboardStatsUseCase,
+    GetActivityUseCase,
   ],
 })
 export class AdminModule {}

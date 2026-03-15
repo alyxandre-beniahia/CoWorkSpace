@@ -21,9 +21,12 @@ export type CalendarSlot = {
 type ReservationCalendarProps = {
   events?: EventInput[];
   height?: string | number;
+  /** Afficher les événements qui se chevauchent côte à côte (false) ou superposés (true, défaut). */
+  slotEventOverlap?: boolean;
   /** Active la sélection de créneaux libres. */
   selectable?: boolean;
   /** Callback lorsque l’utilisateur sélectionne un créneau dans le calendrier. */
+  onDatesSet?: (start: Date, end: Date) => void;
   onSelectSlot?: (slot: CalendarSlot) => void;
   /** Active l’édition des évènements (drag & drop / resize). */
   editableEvents?: boolean;
@@ -41,7 +44,9 @@ type ReservationCalendarProps = {
 export function ReservationCalendar({
   events = defaultEvents,
   height = 400,
+  slotEventOverlap = true,
   selectable = false,
+  onDatesSet,
   onSelectSlot,
   editableEvents = false,
   onEventClick,
@@ -52,6 +57,7 @@ export function ReservationCalendar({
       plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
       initialView="timeGridWeek"
       locale="fr"
+      firstDay={1}
       headerToolbar={{
         left: "prev,next today",
         center: "title",
@@ -59,12 +65,16 @@ export function ReservationCalendar({
       }}
       events={events}
       height={height}
-      /* On affiche toute la journée pour éviter de masquer des réservations
-         à cause de décalages de fuseau horaire, mais on scrolle vers 08h. */
-      slotMinTime="00:00:00"
-      slotMaxTime="24:00:00"
-      scrollTime="08:00:00"
+      datesSet={(arg) => {
+        if (onDatesSet && arg.start && arg.end) onDatesSet(arg.start, arg.end);
+      }}
+      /* Réservations autorisées uniquement de 7h à 20h. */
+      slotMinTime="07:00:00"
+      slotMaxTime="20:00:00"
+      scrollTime="07:00:00"
       allDaySlot={false}
+      slotEventOverlap={slotEventOverlap}
+      eventOrder={slotEventOverlap === false ? 'extendedProps.spaceName,title' : undefined}
       selectable={selectable}
       selectMirror
       selectOverlap={false}

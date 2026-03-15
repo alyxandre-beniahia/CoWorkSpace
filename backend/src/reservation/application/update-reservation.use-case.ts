@@ -1,13 +1,19 @@
-import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { ReservationRepository } from '../infrastructure/reservation.repository';
 import type { UpdateReservationInput } from '../domain/reservation.entity';
 import type { UpdateReservationDto } from './dto/update-reservation.dto';
+import {
+  isWithinReservationWindow,
+  isStartInFuture,
+  RESERVATION_WINDOW_MESSAGE,
+  RESERVATION_FUTURE_MESSAGE,
+} from './reservation-window.utils';
 
 @Injectable()
 export class UpdateReservationUseCase {
   constructor(private readonly reservationRepository: ReservationRepository) {}
 
-  async run(reservationId: string, userId: string, dto: UpdateReservationDto) {
+  async run(reservationId: string, userId: string, dto: UpdateReservationDto, role?: string) {
     const input: UpdateReservationInput = {
       ...(dto.seatId !== undefined && { seatId: dto.seatId ?? null }),
       ...(dto.startDatetime && { startDatetime: new Date(dto.startDatetime) }),
@@ -23,7 +29,8 @@ export class UpdateReservationUseCase {
     if (!existing) {
       throw new NotFoundException('Réservation introuvable.');
     }
-    if (existing.userId !== userId) {
+    const isAdmin = role === 'admin';
+    if (!isAdmin && existing.userId !== userId) {
       throw new ForbiddenException('Vous ne pouvez modifier que vos propres réservations.');
     }
 
@@ -32,6 +39,12 @@ export class UpdateReservationUseCase {
 
     if (end <= start) {
       throw new ConflictException('La date de fin doit être après la date de début.');
+    }
+    if (!isWithinReservationWindow(start, end)) {
+      throw new BadRequestException(RESERVATION_WINDOW_MESSAGE);
+    }
+    if (!isStartInFuture(start)) {
+      throw new BadRequestException(RESERVATION_FUTURE_MESSAGE);
     }
 
     const effectiveSeatId = input.seatId !== undefined ? input.seatId : existing.seatId;
@@ -47,9 +60,7 @@ export class UpdateReservationUseCase {
       throw new ConflictException('Ce créneau chevauche une réservation existante.');
     }
 
-    const updated = await this.reservationRepository.update(reservationId, input);
-
-    return updated;
+    return this.reservationRepository.update(reservationId, input);
   }
 }
 

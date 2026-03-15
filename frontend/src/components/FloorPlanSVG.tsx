@@ -32,10 +32,24 @@ function getSpaceDimensions(space: SpaceForPlan): { w: number; h: number } {
   return { w: 224, h: 144 }
 }
 
-function getSpaceStyle(type: SpaceType, status: SpaceStatus) {
+function getSpaceStyle(type: SpaceType, status: SpaceStatus, mode: 'admin' | 'public') {
   const statusClass = SPACE_STATUS_CLASS[status]
   const isOccupied = statusClass === 'bg-status-occupied'
   const isUnavailable = statusClass === 'bg-status-unavailable'
+
+  if (mode === 'public') {
+    if (statusClass === 'bg-status-available') {
+      return { fill: '#22c55e', stroke: '#16a34a' }
+    }
+    if (statusClass === 'bg-status-occupied') {
+      return { fill: '#f97316', stroke: '#ea580c' }
+    }
+    return { fill: '#ef4444', stroke: '#dc2626' }
+  }
+
+  if (type === 'OTHER') {
+    return { fill: '#94a3b8', stroke: '#64748b' }
+  }
   if (type === 'MEETING_ROOM' || type === 'HOT_DESK') {
     return {
       fill: isOccupied ? '#f97316' : isUnavailable ? '#94a3b8' : '#c084fc',
@@ -161,7 +175,7 @@ function DraggableSpace({
   const x = space.positionX ?? 0
   const y = space.positionY ?? 0
   const { w, h } = getSpaceDimensions(space)
-  const style = getSpaceStyle(space.type, space.status)
+  const style = getSpaceStyle(space.type, space.status, mode)
 
   const [dragState, setDragState] = useState<{
     isDragging: boolean
@@ -239,7 +253,7 @@ function DraggableSpace({
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
-      if (mode === 'public' && onSelectSpace) {
+      if (mode === 'public' && onSelectSpace && space.type !== 'OTHER') {
         e.stopPropagation()
         onSelectSpace(space)
       }
@@ -259,7 +273,12 @@ function DraggableSpace({
       onPointerCancel={handlePointerUp}
       onClick={handleClick}
       style={{
-        cursor: mode === 'admin' ? 'grab' : mode === 'public' ? 'pointer' : 'default',
+        cursor:
+          mode === 'admin'
+            ? 'grab'
+            : mode === 'public' && space.type !== 'OTHER'
+              ? 'pointer'
+              : 'default',
       }}
     >
       <rect

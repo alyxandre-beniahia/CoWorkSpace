@@ -22,6 +22,14 @@ export type ReservationCalendarItem = {
   isOwner: boolean;
 };
 
+/** Détail d'une réservation (GET /reservations/:id), avec infos utilisateur. */
+export type ReservationDetail = ReservationCalendarItem & {
+  spaceName?: string;
+  userName: string;
+  userEmail: string;
+  recurrenceGroupId?: string | null;
+};
+
 /** Payload pour POST /reservations (création). */
 export type CreateReservationBody = {
   spaceId: string;

@@ -5,8 +5,11 @@ import { ReservationRepository } from '../infrastructure/reservation.repository'
 export class GetReservationByIdUseCase {
   constructor(private readonly reservationRepository: ReservationRepository) {}
 
-  async run(id: string, currentUserId?: string) {
-    const reservation = await this.reservationRepository.findById(id, currentUserId);
+  async run(id: string, currentUserId?: string, role?: string) {
+    const unmaskPrivate = role === 'admin';
+    const reservation = await this.reservationRepository.findById(id, currentUserId, {
+      unmaskPrivate,
+    });
     if (!reservation) {
       throw new NotFoundException('Réservation introuvable.');
     }
