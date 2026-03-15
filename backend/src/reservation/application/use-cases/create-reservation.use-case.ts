@@ -74,6 +74,20 @@ export class CreateReservationUseCase {
         if (!isStartInFuture(occ.startDatetime)) {
           throw new ReservationBadRequestError(RESERVATION_FUTURE_MESSAGE);
         }
+        const userOverlap = await this.reservationRepository.hasUserOverlap(
+          effectiveUserId,
+          occ.startDatetime,
+          occ.endDatetime,
+        );
+        if (userOverlap) {
+          const dateLisible = occ.startDatetime.toLocaleString('fr-FR', {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+          });
+          throw new ReservationConflictError(
+            `Impossible de créer la série : le ${dateLisible} vous avez déjà une réservation sur ce créneau.`,
+          );
+        }
         const hasOverlap = await this.reservationRepository.hasOverlap(
           dto.spaceId,
           occ.startDatetime,
@@ -107,6 +121,17 @@ export class CreateReservationUseCase {
 
       const created = await this.reservationRepository.createMany(inputs);
       return { created: created.length, recurrenceGroupId, first: created[0] };
+    }
+
+    const userOverlap = await this.reservationRepository.hasUserOverlap(
+      effectiveUserId,
+      start,
+      end,
+    );
+    if (userOverlap) {
+      throw new ReservationConflictError(
+        'Vous avez déjà une réservation sur ce créneau.',
+      );
     }
 
     const hasOverlap = await this.reservationRepository.hasOverlap(

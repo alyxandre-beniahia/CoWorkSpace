@@ -53,6 +53,18 @@ export class UpdateReservationUseCase {
       throw new ReservationBadRequestError(RESERVATION_FUTURE_MESSAGE);
     }
 
+    const userOverlap = await this.reservationRepository.hasUserOverlap(
+      existing.userId,
+      start,
+      end,
+      reservationId,
+    );
+    if (userOverlap) {
+      throw new ReservationConflictError(
+        'Vous avez déjà une réservation sur ce créneau.',
+      );
+    }
+
     const effectiveSeatId = input.seatId !== undefined ? input.seatId : existing.seatId;
     const hasOverlap = await this.reservationRepository.hasOverlap(
       existing.spaceId,
