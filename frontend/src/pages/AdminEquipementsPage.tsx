@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useAuth } from '@/contexts/AuthContext'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
@@ -30,6 +31,8 @@ export function AdminEquipementsPage() {
   const [loading, setLoading] = useState(false)
   const [editingEquipement, setEditingEquipement] = useState<AdminEquipement | null>(null)
   const [form, setForm] = useState(defaultForm)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   async function load() {
     if (!token) return
@@ -91,13 +94,20 @@ export function AdminEquipementsPage() {
     }
   }
 
-  async function handleDelete(id: string) {
+  function openConfirmDelete(id: string) {
     if (!token) return
-    if (!window.confirm('Supprimer cet équipement ?')) return
+    setPendingDeleteId(id)
+    setConfirmDeleteOpen(true)
+  }
+
+  async function performDeleteEquipement() {
+    if (!token || !pendingDeleteId) return
     try {
-      await api(`/admin/equipements/${id}`, { method: 'DELETE', token })
+      await api(`/admin/equipements/${pendingDeleteId}`, { method: 'DELETE', token })
       toast.success('Équipement supprimé')
-      if (editingEquipement?.id === id) closeEditModal()
+      if (editingEquipement?.id === pendingDeleteId) closeEditModal()
+      setConfirmDeleteOpen(false)
+      setPendingDeleteId(null)
       await load()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Impossible de supprimer l'équipement")
@@ -177,7 +187,7 @@ export function AdminEquipementsPage() {
                           <Button size="xs" variant="outline" onClick={() => openEditModal(e)}>
                             Modifier
                           </Button>
-                          <Button size="xs" variant="ghost" onClick={() => handleDelete(e.id)}>
+                          <Button size="xs" variant="ghost" onClick={() => openConfirmDelete(e.id)}>
                             Supprimer
                           </Button>
                         </div>
@@ -231,6 +241,20 @@ export function AdminEquipementsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        onOpenChange={(open) => {
+          setConfirmDeleteOpen(open)
+          if (!open) setPendingDeleteId(null)
+        }}
+        title="Supprimer cet équipement ?"
+        description="Cette action est irréversible. Les associations avec les espaces seront supprimées."
+        confirmLabel="Supprimer"
+        cancelLabel="Annuler"
+        variant="destructive"
+        onConfirm={performDeleteEquipement}
+      />
     </div>
   )
 }

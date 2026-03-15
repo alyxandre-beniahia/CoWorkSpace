@@ -16,6 +16,8 @@
     "test:local": "DATABASE_URL=\"postgresql://cowork:cowork_dev@localhost:5433/coworkspace_dev\" jest",
     "test:integration": "DATABASE_URL=\"postgresql://cowork:cowork_dev@localhost:5433/coworkspace_test\" jest -c jest-integration.config.js --runInBand",
     "test:functional": "DATABASE_URL=\"postgresql://cowork:cowork_dev@localhost:5433/coworkspace_functional\" jest -c jest-functional.config.js --runInBand",
+    "test:integration:ci": "jest -c jest-integration.config.js --runInBand",
+    "test:functional:ci": "jest -c jest-functional.config.js --runInBand",
     "db:functional:setup": "DATABASE_URL=\"postgresql://cowork:cowork_dev@localhost:5433/coworkspace_functional\" npx prisma migrate deploy && DATABASE_URL=\"postgresql://cowork:cowork_dev@localhost:5433/coworkspace_functional\" npm run prisma:seed",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage"

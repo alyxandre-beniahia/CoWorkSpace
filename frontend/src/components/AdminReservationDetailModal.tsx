@@ -8,6 +8,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -66,6 +67,7 @@ export function AdminReservationDetailModal({
   const [editRecurrenceFreq, setEditRecurrenceFreq] = useState<RecurrenceFreq>("daily");
   const [editRecurrenceWeekdays, setEditRecurrenceWeekdays] = useState<number[]>([]);
   const [editRecurrenceEndAt, setEditRecurrenceEndAt] = useState<string>("");
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
 
   useEffect(() => {
     if (!open || !reservationId || !token) {
@@ -162,14 +164,13 @@ export function AdminReservationDetailModal({
     }
   }
 
-  async function handleCancelReservation() {
+  function openConfirmCancel() {
     if (!token || !detail) return;
-    if (
-      !window.confirm(
-        "Annuler cette réservation ? L'utilisateur en sera notifié.",
-      )
-    )
-      return;
+    setConfirmCancelOpen(true);
+  }
+
+  async function performCancelReservation() {
+    if (!token || !detail) return;
     setSubmitting(true);
     try {
       await api(`/reservations/${detail.id}/annuler`, {
@@ -177,6 +178,7 @@ export function AdminReservationDetailModal({
         token,
       });
       toast.success("Réservation annulée.");
+      setConfirmCancelOpen(false);
       onOpenChange(false);
       onUpdated?.();
     } catch (e) {
@@ -189,6 +191,7 @@ export function AdminReservationDetailModal({
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
@@ -403,10 +406,10 @@ export function AdminReservationDetailModal({
                 <Button
                   type="button"
                   variant="destructive"
-                  onClick={handleCancelReservation}
+                  onClick={openConfirmCancel}
                   disabled={submitting}
                 >
-                  {submitting ? "Annulation…" : "Annuler la réservation"}
+                  Annuler la réservation
                 </Button>
               </>
             )}
@@ -414,5 +417,18 @@ export function AdminReservationDetailModal({
         )}
       </DialogContent>
     </Dialog>
+
+    <ConfirmDialog
+      open={confirmCancelOpen}
+      onOpenChange={setConfirmCancelOpen}
+      title="Annuler cette réservation ?"
+      description="L'utilisateur en sera notifié. Cette action est irréversible."
+      confirmLabel="Annuler la réservation"
+      cancelLabel="Retour"
+      variant="destructive"
+      onConfirm={performCancelReservation}
+      loading={submitting}
+    />
+  </>
   );
 }
