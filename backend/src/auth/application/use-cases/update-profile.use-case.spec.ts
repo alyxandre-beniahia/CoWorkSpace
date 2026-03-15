@@ -29,7 +29,12 @@ describe('UpdateProfileUseCase', () => {
       providers: [
         { provide: AUTH_USER_REPOSITORY, useValue: mockUserRepo },
         { provide: AUTH_AVATAR_URL_PROVIDER, useValue: mockAvatarUrlProvider },
-        UpdateProfileUseCase,
+        {
+          provide: UpdateProfileUseCase,
+          useFactory: (userRepo: IUserRepository, avatarUrlProvider: { getAvatarUrl: (id: string) => string }) =>
+            new UpdateProfileUseCase(userRepo, avatarUrlProvider),
+          inject: [AUTH_USER_REPOSITORY, AUTH_AVATAR_URL_PROVIDER],
+        },
       ],
     }).compile();
 

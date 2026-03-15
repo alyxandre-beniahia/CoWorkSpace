@@ -1,19 +1,16 @@
-import { Injectable, Inject } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
 import {
   BadRequestAuthError,
   UserNotFoundError,
   InvalidCredentialsError,
 } from '../../domain/errors/auth.errors';
 import type { IUserRepository } from '../../domain/repositories/user.repository.interface';
-import { AUTH_USER_REPOSITORY } from '../../domain/repositories/user.repository.interface';
+import type { IPasswordHasher } from '../ports/password-hasher.port';
 import type { ChangePasswordDto } from '../dtos/change-password.dto';
 
-@Injectable()
 export class ChangePasswordUseCase {
   constructor(
-    @Inject(AUTH_USER_REPOSITORY)
     private readonly userRepo: IUserRepository,
+    private readonly passwordHasher: IPasswordHasher,
   ) {}
 
   /** Change le mot de passe de l'utilisateur connecté (page profil). */
@@ -29,7 +26,7 @@ export class ChangePasswordUseCase {
       throw new UserNotFoundError('Utilisateur non trouvé');
     }
 
-    const isCurrentValid = await bcrypt.compare(
+    const isCurrentValid = await this.passwordHasher.compare(
       dto.currentPassword,
       user.passwordHash,
     );
@@ -37,7 +34,7 @@ export class ChangePasswordUseCase {
       throw new InvalidCredentialsError('Mot de passe actuel incorrect');
     }
 
-    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    const passwordHash = await this.passwordHasher.hash(dto.newPassword);
     await this.userRepo.updatePassword(userId, passwordHash);
 
     return { message: 'Mot de passe mis à jour' };

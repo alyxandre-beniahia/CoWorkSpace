@@ -5,11 +5,14 @@ import {
 } from '../../domain/errors/auth.errors';
 import type { IUserRepository } from '../../domain/repositories/user.repository.interface';
 import { AUTH_USER_REPOSITORY } from '../../domain/repositories/user.repository.interface';
+import type { IPasswordHasher } from '../ports/password-hasher.port';
+import { AUTH_PASSWORD_HASHER } from '../ports/password-hasher.port';
 import { ResetPasswordUseCase } from './reset-password.use-case';
 
 describe('ResetPasswordUseCase', () => {
   let useCase: ResetPasswordUseCase;
   let mockUserRepo: jest.Mocked<IUserRepository>;
+  let mockPasswordHasher: jest.Mocked<IPasswordHasher>;
 
   beforeEach(async () => {
     mockUserRepo = {
@@ -25,11 +28,21 @@ describe('ResetPasswordUseCase', () => {
       findAndConsumeEmailVerificationToken: jest.fn(),
       findAndConsumePasswordResetToken: jest.fn(),
     };
+    mockPasswordHasher = {
+      hash: jest.fn().mockResolvedValue('new-password-hash'),
+      compare: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         { provide: AUTH_USER_REPOSITORY, useValue: mockUserRepo },
-        ResetPasswordUseCase,
+        { provide: AUTH_PASSWORD_HASHER, useValue: mockPasswordHasher },
+        {
+          provide: ResetPasswordUseCase,
+          useFactory: (userRepo: IUserRepository, passwordHasher: IPasswordHasher) =>
+            new ResetPasswordUseCase(userRepo, passwordHasher),
+          inject: [AUTH_USER_REPOSITORY, AUTH_PASSWORD_HASHER],
+        },
       ],
     }).compile();
 

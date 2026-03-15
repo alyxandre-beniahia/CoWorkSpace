@@ -10,10 +10,20 @@ import { UserRepository } from './infrastructure/repositories/user.repository';
 import { JwtAuthTokenService } from './infrastructure/adapters/jwt-auth-token.service';
 import { AuthEmailSenderAdapter } from './infrastructure/adapters/auth-email-sender.adapter';
 import { AvatarUrlAdapter } from './infrastructure/adapters/avatar-url.adapter';
+import { BcryptPasswordHasherAdapter } from './infrastructure/adapters/bcrypt-password-hasher.adapter';
+import { CryptoTokenGeneratorAdapter } from './infrastructure/adapters/crypto-token-generator.adapter';
+import type { IUserRepository } from './domain/repositories/user.repository.interface';
 import { AUTH_USER_REPOSITORY } from './domain/repositories/user.repository.interface';
+import type { IAuthTokenService } from './application/ports/auth-token.port';
 import { AUTH_TOKEN_SERVICE } from './application/ports/auth-token.port';
+import type { IEmailSender } from './application/ports/email-sender.port';
 import { AUTH_EMAIL_SENDER } from './application/ports/email-sender.port';
+import type { IAvatarUrlProvider } from './application/ports/avatar-url.port';
 import { AUTH_AVATAR_URL_PROVIDER } from './application/ports/avatar-url.port';
+import type { IPasswordHasher } from './application/ports/password-hasher.port';
+import { AUTH_PASSWORD_HASHER } from './application/ports/password-hasher.port';
+import type { ITokenGenerator } from './application/ports/token-generator.port';
+import { AUTH_TOKEN_GENERATOR } from './application/ports/token-generator.port';
 import { LoginUseCase } from './application/use-cases/login.use-case';
 import { GetMeUseCase } from './application/use-cases/get-me.use-case';
 import { RegisterUseCase } from './application/use-cases/register.use-case';
@@ -52,16 +62,73 @@ import { NotificationModule } from '../notification/notification.module';
       provide: AUTH_AVATAR_URL_PROVIDER,
       useClass: AvatarUrlAdapter,
     },
+    {
+      provide: AUTH_PASSWORD_HASHER,
+      useClass: BcryptPasswordHasherAdapter,
+    },
+    {
+      provide: AUTH_TOKEN_GENERATOR,
+      useClass: CryptoTokenGeneratorAdapter,
+    },
     JwtAuthGuard,
     AdminGuard,
-    LoginUseCase,
-    GetMeUseCase,
-    RegisterUseCase,
-    VerifyEmailUseCase,
-    UpdateProfileUseCase,
-    RequestPasswordResetUseCase,
-    ResetPasswordUseCase,
-    ChangePasswordUseCase,
+    {
+      provide: LoginUseCase,
+      useFactory: (
+        userRepo: IUserRepository,
+        authTokenService: IAuthTokenService,
+        passwordHasher: IPasswordHasher,
+      ) => new LoginUseCase(userRepo, authTokenService, passwordHasher),
+      inject: [AUTH_USER_REPOSITORY, AUTH_TOKEN_SERVICE, AUTH_PASSWORD_HASHER],
+    },
+    {
+      provide: GetMeUseCase,
+      useFactory: (userRepo: IUserRepository, avatarUrlProvider: IAvatarUrlProvider) =>
+        new GetMeUseCase(userRepo, avatarUrlProvider),
+      inject: [AUTH_USER_REPOSITORY, AUTH_AVATAR_URL_PROVIDER],
+    },
+    {
+      provide: RegisterUseCase,
+      useFactory: (
+        userRepo: IUserRepository,
+        emailSender: IEmailSender,
+        passwordHasher: IPasswordHasher,
+        tokenGenerator: ITokenGenerator,
+      ) => new RegisterUseCase(userRepo, emailSender, passwordHasher, tokenGenerator),
+      inject: [AUTH_USER_REPOSITORY, AUTH_EMAIL_SENDER, AUTH_PASSWORD_HASHER, AUTH_TOKEN_GENERATOR],
+    },
+    {
+      provide: VerifyEmailUseCase,
+      useFactory: (userRepo: IUserRepository) => new VerifyEmailUseCase(userRepo),
+      inject: [AUTH_USER_REPOSITORY],
+    },
+    {
+      provide: UpdateProfileUseCase,
+      useFactory: (userRepo: IUserRepository, avatarUrlProvider: IAvatarUrlProvider) =>
+        new UpdateProfileUseCase(userRepo, avatarUrlProvider),
+      inject: [AUTH_USER_REPOSITORY, AUTH_AVATAR_URL_PROVIDER],
+    },
+    {
+      provide: RequestPasswordResetUseCase,
+      useFactory: (
+        userRepo: IUserRepository,
+        emailSender: IEmailSender,
+        tokenGenerator: ITokenGenerator,
+      ) => new RequestPasswordResetUseCase(userRepo, emailSender, tokenGenerator),
+      inject: [AUTH_USER_REPOSITORY, AUTH_EMAIL_SENDER, AUTH_TOKEN_GENERATOR],
+    },
+    {
+      provide: ResetPasswordUseCase,
+      useFactory: (userRepo: IUserRepository, passwordHasher: IPasswordHasher) =>
+        new ResetPasswordUseCase(userRepo, passwordHasher),
+      inject: [AUTH_USER_REPOSITORY, AUTH_PASSWORD_HASHER],
+    },
+    {
+      provide: ChangePasswordUseCase,
+      useFactory: (userRepo: IUserRepository, passwordHasher: IPasswordHasher) =>
+        new ChangePasswordUseCase(userRepo, passwordHasher),
+      inject: [AUTH_USER_REPOSITORY, AUTH_PASSWORD_HASHER],
+    },
     JwtStrategy,
   ],
   exports: [JwtModule, JwtAuthGuard, AdminGuard],

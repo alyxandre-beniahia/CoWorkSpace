@@ -1,22 +1,17 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { randomBytes } from 'crypto';
 import type { IUserRepository } from '../../domain/repositories/user.repository.interface';
-import { AUTH_USER_REPOSITORY } from '../../domain/repositories/user.repository.interface';
 import type { IEmailSender } from '../ports/email-sender.port';
-import { AUTH_EMAIL_SENDER } from '../ports/email-sender.port';
+import type { ITokenGenerator } from '../ports/token-generator.port';
 import type { RequestPasswordResetDto } from '../dtos/request-password-reset.dto';
 
 type RequestPasswordResetResult = {
   message: string;
 };
 
-@Injectable()
 export class RequestPasswordResetUseCase {
   constructor(
-    @Inject(AUTH_USER_REPOSITORY)
     private readonly userRepo: IUserRepository,
-    @Inject(AUTH_EMAIL_SENDER)
     private readonly emailSender: IEmailSender,
+    private readonly tokenGenerator: ITokenGenerator,
   ) {}
 
   /** Demande de réinitialisation : crée un token et envoie l'email. */
@@ -30,7 +25,7 @@ export class RequestPasswordResetUseCase {
       };
     }
 
-    const token = randomBytes(32).toString('hex');
+    const token = this.tokenGenerator.generate();
     await this.userRepo.createToken('PASSWORD_RESET', user.id, token);
 
     try {

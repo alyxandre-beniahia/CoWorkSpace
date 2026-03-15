@@ -29,7 +29,11 @@ describe('VerifyEmailUseCase', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         { provide: AUTH_USER_REPOSITORY, useValue: mockUserRepo },
-        VerifyEmailUseCase,
+        {
+          provide: VerifyEmailUseCase,
+          useFactory: (userRepo: IUserRepository) => new VerifyEmailUseCase(userRepo),
+          inject: [AUTH_USER_REPOSITORY],
+        },
       ],
     }).compile();
 

@@ -5,7 +5,7 @@ import {
   RESERVATION_HOURS_PER_DAY,
   getTodayStartEndParis,
   getWeekStartEndParis,
-} from '../../reservation/application/reservation-window.utils';
+} from '../../reservation/application/utils/reservation-window.utils';
 
 export type TopSpaceReserved = {
   spaceId: string;

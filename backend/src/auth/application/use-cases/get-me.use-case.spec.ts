@@ -29,7 +29,12 @@ describe('GetMeUseCase', () => {
       providers: [
         { provide: AUTH_USER_REPOSITORY, useValue: mockUserRepo },
         { provide: AUTH_AVATAR_URL_PROVIDER, useValue: mockAvatarUrlProvider },
-        GetMeUseCase,
+        {
+          provide: GetMeUseCase,
+          useFactory: (userRepo: IUserRepository, avatarUrlProvider: { getAvatarUrl: (id: string) => string }) =>
+            new GetMeUseCase(userRepo, avatarUrlProvider),
+          inject: [AUTH_USER_REPOSITORY, AUTH_AVATAR_URL_PROVIDER],
+        },
       ],
     }).compile();
 
