@@ -247,6 +247,13 @@ Réexécutez le seed :
 DATABASE_URL="postgresql://cowork:cowork_dev@localhost:5433/coworkspace_test" npm run prisma:seed
 ```
 
+### Erreur : "User was denied access on the database coworkspace_test"
+
+- **Port** : Les scripts du projet utilisent le **port 5433** pour les tests (`localhost:5433`). Si votre Postgres écoute sur le port par défaut 5432, utilisez `127.0.0.1:5432` dans `DATABASE_URL` et assurez-vous que la base `coworkspace_test` existe et que l’utilisateur a les droits dessus.
+- Créez la base si besoin : `psql -U postgres -c "CREATE DATABASE coworkspace_test;"` puis accordez les droits à l’utilisateur `cowork` (ou celui de votre `DATABASE_URL`).
+- Une seule commande pour migrer + seed sur la base de test (avec l’URL par défaut du projet, port 5433) :  
+  `npm run db:test:setup`
+
 ### Tests qui échouent de manière intermittente
 
 Vérifiez que les tests nettoient correctement leurs données et n'interfèrent pas entre eux. Le `cleanupAuthData` dans `afterEach` supprime les users avec les préfixes `it-` et `new-user-`.

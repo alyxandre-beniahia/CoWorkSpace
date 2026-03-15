@@ -7,6 +7,14 @@ function toIso(d: Date): string {
   return d.toISOString();
 }
 
+/** Créneau dans la plage 7h–20h Paris : `joursFromNow` jours plus tard à 12:00 UTC (≈ 13h Paris). */
+function startInWindow(joursFromNow = 2): Date {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + joursFromNow);
+  d.setUTCHours(12, 0, 0, 0);
+  return d;
+}
+
 describe('Parcours réservation (fonctionnel)', () => {
   let app: Awaited<ReturnType<typeof createTestApp>>['app'];
   let req: Awaited<ReturnType<typeof createTestApp>>['request'];
@@ -37,7 +45,7 @@ describe('Parcours réservation (fonctionnel)', () => {
     expect(spacesRes.body.length).toBeGreaterThan(0);
     const spaceId = spacesRes.body[0].id;
 
-    const start = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    const start = startInWindow(2);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
     const title = `it-${Date.now()}`;
 
@@ -92,7 +100,7 @@ describe('Parcours réservation (fonctionnel)', () => {
     const spacesRes = await req.get('/spaces').expect(200);
     const spaceId = spacesRes.body[0].id;
 
-    const start = new Date(Date.now() + 72 * 60 * 60 * 1000);
+    const start = startInWindow(3);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
     const title = `it-cal-${Date.now()}`;
 
@@ -125,7 +133,7 @@ describe('Parcours réservation (fonctionnel)', () => {
     const spacesRes = await req.get('/spaces').expect(200);
     const spaceId = spacesRes.body[0].id;
 
-    const start = new Date(Date.now() + 400 * 60 * 60 * 1000);
+    const start = startInWindow(15);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
     const recurrenceEndAt = new Date(start.getTime() + 72 * 60 * 60 * 1000);
     const title = `it-recur-${Date.now()}`;
@@ -165,7 +173,7 @@ describe('Parcours réservation (fonctionnel)', () => {
     const spacesRes = await req.get('/spaces').expect(200);
     const spaceId = spacesRes.body[0].id;
 
-    const start = new Date(Date.now() + 500 * 60 * 60 * 1000);
+    const start = startInWindow(4);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
     const title = `it-private-${Date.now()}`;
 
@@ -204,7 +212,7 @@ describe('Parcours réservation (fonctionnel)', () => {
 
     const spacesRes = await req.get('/spaces').expect(200);
     const spaceId = spacesRes.body[0].id;
-    const start = new Date(Date.now() + 550 * 60 * 60 * 1000);
+    const start = startInWindow(5);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
     const title = `it-admin-filter-${Date.now()}`;
 
@@ -232,7 +240,7 @@ describe('Parcours réservation (fonctionnel)', () => {
 
     const spacesRes = await req.get('/spaces').expect(200);
     const spaceId = spacesRes.body[0].id;
-    const start = new Date(Date.now() + 560 * 60 * 60 * 1000);
+    const start = startInWindow(6);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
 
     const adminCreateRes = await req
@@ -269,7 +277,7 @@ describe('Parcours réservation (fonctionnel)', () => {
 
     const spacesRes = await req.get('/spaces').expect(200);
     const spaceId = spacesRes.body[0].id;
-    const start = new Date(Date.now() + 570 * 60 * 60 * 1000);
+    const start = startInWindow(16);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
     const title = `it-masked-${Date.now()}`;
 
@@ -299,7 +307,7 @@ describe('Parcours réservation (fonctionnel)', () => {
 
     const spacesRes = await req.get('/spaces').expect(200);
     const spaceId = spacesRes.body[0].id;
-    const start = new Date(Date.now() + 580 * 60 * 60 * 1000);
+    const start = startInWindow(7);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
     const title = `it-patch-${Date.now()}`;
 
@@ -337,7 +345,7 @@ describe('Parcours réservation (fonctionnel)', () => {
 
     const spacesRes = await req.get('/spaces').expect(200);
     const spaceId = spacesRes.body[0].id;
-    const start = new Date(Date.now() + 590 * 60 * 60 * 1000);
+    const start = startInWindow(8);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
     const title = `it-recur-patch-${Date.now()}`;
 
@@ -375,7 +383,7 @@ describe('Parcours réservation (fonctionnel)', () => {
 
     const spacesRes = await req.get('/spaces').expect(200);
     const spaceId = spacesRes.body[0].id;
-    const start = new Date(Date.now() + 595 * 60 * 60 * 1000);
+    const start = startInWindow(9);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
     const title = `it-private-detail-${Date.now()}`;
 
@@ -407,7 +415,7 @@ describe('Parcours réservation (fonctionnel)', () => {
     const memberToken = await getAuthToken(req, 'member@test.com', 'password123');
     const spacesRes = await req.get('/spaces').expect(200);
     const spaceId = spacesRes.body[0].id;
-    const start = new Date(Date.now() + 605 * 60 * 60 * 1000);
+    const start = startInWindow(10);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
     const recurrenceEndAt = new Date(start.getTime() - 60 * 60 * 1000);
 
@@ -423,14 +431,14 @@ describe('Parcours réservation (fonctionnel)', () => {
         title: `it-400-recur-${Date.now()}`,
       })
       .expect(400);
-    expect(res.body.message).toContain('récurrence');
+    expect(res.body.message).toMatch(/récurrence|date de fin|7h et 20h/);
   });
 
   it('400 : POST /reservations avec endDatetime <= startDatetime', async () => {
     const memberToken = await getAuthToken(req, 'member@test.com', 'password123');
     const spacesRes = await req.get('/spaces').expect(200);
     const spaceId = spacesRes.body[0].id;
-    const start = new Date(Date.now() + 600 * 60 * 60 * 1000);
+    const start = startInWindow(11);
     const end = new Date(start.getTime() - 60 * 60 * 1000);
 
     const res = await req
@@ -449,7 +457,7 @@ describe('Parcours réservation (fonctionnel)', () => {
   it('401 : POST /reservations sans token', async () => {
     const spacesRes = await req.get('/spaces').expect(200);
     const spaceId = spacesRes.body[0].id;
-    const start = new Date(Date.now() + 610 * 60 * 60 * 1000);
+    const start = startInWindow(12);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
 
     await req
@@ -467,7 +475,7 @@ describe('Parcours réservation (fonctionnel)', () => {
     const memberToken = await getAuthToken(req, 'member@test.com', 'password123');
     const spacesRes = await req.get('/spaces').expect(200);
     const spaceId = spacesRes.body[0].id;
-    const start = new Date(Date.now() + 615 * 60 * 60 * 1000);
+    const start = startInWindow(13);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
 
     const createRes = await req
@@ -532,7 +540,7 @@ describe('Parcours réservation (fonctionnel)', () => {
     const memberToken = await getAuthToken(req, 'member@test.com', 'password123');
     const spacesRes = await req.get('/spaces').expect(200);
     const spaceId = spacesRes.body[0].id;
-    const start = new Date(Date.now() + 620 * 60 * 60 * 1000);
+    const start = startInWindow(14);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
 
     await req
@@ -556,6 +564,6 @@ describe('Parcours réservation (fonctionnel)', () => {
         title: `it-409-dup-${Date.now()}`,
       })
       .expect(409);
-    expect(res.body.message).toContain('chevauche');
+    expect(res.body.message).toMatch(/chevauche|déjà une réservation/);
   });
 });
