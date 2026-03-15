@@ -1,10 +1,9 @@
 /**
- * Charge .env.test, applique les migrations puis exécute le seed au début des tests
- * d'intégration/fonctionnels. Les données nécessaires sont ainsi créées avant toute exécution.
+ * En fin d'exécution des tests d'intégration/fonctionnels, supprime toutes
+ * les données créées (seed + données des tests) pour ne pas polluer la base.
  */
 const path = require('path');
 const fs = require('fs');
-const { execSync } = require('child_process');
 
 const backendRoot = path.resolve(__dirname, '../..');
 
@@ -33,19 +32,23 @@ function loadEnvTest() {
   }
 }
 
-module.exports = function globalSetup() {
+module.exports = async function globalTeardown() {
   loadEnvTest();
-  const env = { ...process.env };
+  const { PrismaClient } = require('@prisma/client');
+  const prisma = new PrismaClient();
   try {
-    execSync('npx prisma db push --accept-data-loss', { cwd: backendRoot, env, stdio: 'pipe' });
-  } catch (e) {
-    console.error('Erreur prisma db push:', e.stderr?.toString() || e.message);
-    throw e;
-  }
-  try {
-    execSync('npx ts-node prisma/seed.ts', { cwd: backendRoot, env, stdio: 'pipe' });
-  } catch (e) {
-    console.error('Erreur seed:', e.stderr?.toString() || e.message);
-    throw e;
+    await prisma.notificationLog.deleteMany();
+    await prisma.reservation.deleteMany();
+    await prisma.userToken.deleteMany();
+    await prisma.session.deleteMany();
+    await prisma.user.updateMany({ data: { approvedById: null } });
+    await prisma.user.deleteMany();
+    await prisma.seat.deleteMany();
+    await prisma.spaceEquipement.deleteMany();
+    await prisma.space.deleteMany();
+    await prisma.equipement.deleteMany();
+    await prisma.role.deleteMany();
+  } finally {
+    await prisma.$disconnect();
   }
 };
