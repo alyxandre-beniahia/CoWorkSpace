@@ -24,7 +24,7 @@ import type {
   UpdateReservationBody,
   SeatItem,
 } from "@/types/reservation";
-import { getWeekRange, toIsoString } from "@/lib/date";
+import { getWeekRange, getWeekRangeApiParams } from "@/lib/date";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
@@ -40,6 +40,57 @@ import {
 } from "@/components/ui/select";
 
 export type { ReservationCalendarItem };
+
+/** Map une réservation en événement calendrier (accueil : bleu = moi, rouge = autre ; titre seul ; privé masqué pour les autres). */
+function reservationToEvent(
+  item: ReservationCalendarItem,
+  currentUserRole?: string,
+): EventInput {
+  const isOwner = item.isOwner;
+  const canEdit = isOwner || currentUserRole === "admin";
+
+  if (!canEdit && !isOwner) {
+    return {
+      id: `bg-${item.id}`,
+      title: "",
+      start: item.startDatetime,
+      end: item.endDatetime,
+      display: "background",
+      backgroundColor: "rgba(220, 38, 38, 1)",
+      extendedProps: { spaceName: "", canEdit: false, isOwner: false },
+    };
+  }
+
+  // Couleurs explicites (FullCalendar n'interprète pas var() en inline style selon le thème)
+  const backgroundColor = isOwner ? "#2563eb" : "#dc2626";
+  const borderColor = backgroundColor;
+  const textColor = "#fff";
+
+  let title: string;
+  if (!isOwner && item.isPrivate) {
+    title = "Occupé";
+  } else if (item.seatCode) {
+    title = `${item.title ?? "Réservation"} – ${item.seatCode}`;
+  } else {
+    title = item.title ?? item.effectiveTitle ?? "Réservation";
+  }
+
+  return {
+    id: item.id,
+    title,
+    start: item.startDatetime,
+    end: item.endDatetime,
+    display: "block",
+    backgroundColor,
+    borderColor,
+    textColor,
+    extendedProps: {
+      reservationId: item.id,
+      isOwner,
+      canEdit,
+    },
+  };
+}
 
 type HourSlot = {
   start: Date;
@@ -111,63 +162,21 @@ export function SpaceReservationsModal({
       setSeats([]);
       setSelectedSeatId(null);
     }
-    const { start, end } = getWeekRange(currentWeekStart);
+    const { start, end } = getWeekRangeApiParams(currentWeekStart);
     const params = new URLSearchParams({
       spaceId: space.id,
-      start: toIsoString(start),
-      end: toIsoString(end),
+      start,
+      end,
+      forPlan: "true",
     });
     api<ReservationCalendarItem[]>(`/reservations?${params.toString()}`, {
       token,
     })
       .then((items) => {
         setReservations(items);
-        const mapped: EventInput[] = items
-          .map((item) => {
-            const isOwner = item.isOwner;
-            const canEdit = isOwner || user?.role.slug === "admin";
-
-            // Pour un autre membre non-admin : évènement de fond rouge semi-transparent
-            if (!canEdit && !isOwner) {
-              return {
-                id: `bg-${item.id}`,
-                title: "",
-                start: item.startDatetime,
-                end: item.endDatetime,
-                display: "background",
-                backgroundColor: "rgba(220, 38, 38, 1)",
-                extendedProps: { spaceName: "", canEdit: false, isOwner: false },
-              };
-            }
-
-            const backgroundColor = isOwner
-              ? "hsl(var(--primary))"
-              : "hsl(var(--destructive))";
-            const borderColor = backgroundColor;
-            const textColor = isOwner
-              ? "hsl(var(--primary-foreground))"
-              : "hsl(var(--destructive-foreground))";
-
-            const title = item.seatCode
-              ? `${item.title ?? "Réservation"} – ${item.seatCode}`
-              : (item.title ?? item.effectiveTitle ?? "Réservation");
-            return {
-              id: item.id,
-              title,
-              start: item.startDatetime,
-              end: item.endDatetime,
-              display: "block",
-              backgroundColor,
-              borderColor,
-              textColor,
-              extendedProps: {
-                reservationId: item.id,
-                isOwner,
-                canEdit,
-              },
-            };
-          })
-          .filter((e) => e != null) as EventInput[];
+        const mapped: EventInput[] = items.map((item) =>
+          reservationToEvent(item, user?.role?.slug),
+        );
         setEvents(mapped);
       })
       .catch(() => {
@@ -287,64 +296,21 @@ export function SpaceReservationsModal({
         toast.success("Créneau réservé");
       }
       // Rafraîchir les réservations pour mettre à jour le calendrier
-      const { start, end } = getWeekRange(currentWeekStart);
+      const { start, end } = getWeekRangeApiParams(currentWeekStart);
       const params = new URLSearchParams({
         spaceId: space.id,
-        start: toIsoString(start),
-        end: toIsoString(end),
+        start,
+        end,
+        forPlan: "true",
       });
       const items = await api<ReservationCalendarItem[]>(
         `/reservations?${params.toString()}`,
-        {
-          token,
-        },
+        { token },
       );
       setReservations(items);
-      const mapped: EventInput[] = items
-        .map((item) => {
-          const isOwner = item.isOwner;
-          const canEdit = isOwner || user?.role.slug === "admin";
-
-          if (!canEdit && !isOwner) {
-            return {
-              id: `bg-${item.id}`,
-              title: "",
-              start: item.startDatetime,
-              end: item.endDatetime,
-              display: "background",
-              backgroundColor: "rgba(220, 38, 38, 1)",
-              extendedProps: { spaceName: "", canEdit: false, isOwner: false },
-            };
-          }
-
-          const backgroundColor = isOwner
-            ? "hsl(var(--primary))"
-            : "hsl(var(--destructive))";
-          const borderColor = backgroundColor;
-          const textColor = isOwner
-            ? "hsl(var(--primary-foreground))"
-            : "hsl(var(--destructive-foreground))";
-          const title = item.seatCode
-            ? `${item.title ?? "Réservation"} – ${item.seatCode}`
-            : (item.title ?? item.effectiveTitle ?? "Réservation");
-
-          return {
-            id: item.id,
-            title,
-            start: item.startDatetime,
-            end: item.endDatetime,
-            display: "block",
-            backgroundColor,
-            borderColor,
-            textColor,
-            extendedProps: {
-              reservationId: item.id,
-              isOwner,
-              canEdit,
-            },
-          };
-        })
-        .filter((e) => e != null) as EventInput[];
+      const mapped: EventInput[] = items.map((item) =>
+        reservationToEvent(item, user?.role?.slug),
+      );
       setEvents(mapped);
       setSelectedSlot(null);
     } catch (e) {
@@ -377,64 +343,21 @@ export function SpaceReservationsModal({
         body: JSON.stringify(updateBody),
       });
       toast.success("Réservation mise à jour");
-      const { start, end } = getWeekRange(currentWeekStart);
+      const { start, end } = getWeekRangeApiParams(currentWeekStart);
       const params = new URLSearchParams({
         spaceId: space.id,
-        start: toIsoString(start),
-        end: toIsoString(end),
+        start,
+        end,
+        forPlan: "true",
       });
       const items = await api<ReservationCalendarItem[]>(
         `/reservations?${params.toString()}`,
-        {
-          token,
-        },
+        { token },
       );
       setReservations(items);
-      const mapped: EventInput[] = items
-        .map((item) => {
-          const isOwner = item.isOwner;
-          const canEdit = isOwner || user?.role.slug === "admin";
-
-          if (!canEdit && !isOwner) {
-            return {
-              id: `bg-${item.id}`,
-              title: "",
-              start: item.startDatetime,
-              end: item.endDatetime,
-              display: "background",
-              backgroundColor: "rgba(220, 38, 38, 1)",
-              extendedProps: { spaceName: "", canEdit: false, isOwner: false },
-            };
-          }
-
-          const backgroundColor = isOwner
-            ? "hsl(var(--primary))"
-            : "hsl(var(--destructive))";
-          const borderColor = backgroundColor;
-          const textColor = isOwner
-            ? "hsl(var(--primary-foreground))"
-            : "hsl(var(--destructive-foreground))";
-          const title = item.seatCode
-            ? `${item.title ?? "Réservation"} – ${item.seatCode}`
-            : (item.title ?? item.effectiveTitle ?? "Réservation");
-
-          return {
-            id: item.id,
-            title,
-            start: item.startDatetime,
-            end: item.endDatetime,
-            display: "block",
-            backgroundColor,
-            borderColor,
-            textColor,
-            extendedProps: {
-              reservationId: item.id,
-              isOwner,
-              canEdit,
-            },
-          };
-        })
-        .filter((e) => e != null) as EventInput[];
+      const mapped: EventInput[] = items.map((item) =>
+        reservationToEvent(item, user?.role?.slug),
+      );
       setEvents(mapped);
       setSelectedReservation(null);
     } catch (e) {
@@ -458,64 +381,21 @@ export function SpaceReservationsModal({
         token,
       });
       toast.success("Réservation annulée");
-      const { start, end } = getWeekRange(currentWeekStart);
+      const { start, end } = getWeekRangeApiParams(currentWeekStart);
       const params = new URLSearchParams({
         spaceId: space.id,
-        start: toIsoString(start),
-        end: toIsoString(end),
+        start,
+        end,
+        forPlan: "true",
       });
       const items = await api<ReservationCalendarItem[]>(
         `/reservations?${params.toString()}`,
-        {
-          token,
-        },
+        { token },
       );
       setReservations(items);
-      const mapped: EventInput[] = items
-        .map((item) => {
-          const isOwner = item.isOwner;
-          const canEdit = isOwner || user?.role.slug === "admin";
-
-          if (!canEdit && !isOwner) {
-            return {
-              id: `bg-${item.id}`,
-              title: "",
-              start: item.startDatetime,
-              end: item.endDatetime,
-              display: "background",
-              backgroundColor: "rgba(220, 38, 38, 1)",
-              extendedProps: { spaceName: "", canEdit: false, isOwner: false },
-            };
-          }
-
-          const backgroundColor = isOwner
-            ? "hsl(var(--primary))"
-            : "hsl(var(--destructive))";
-          const borderColor = backgroundColor;
-          const textColor = isOwner
-            ? "hsl(var(--primary-foreground))"
-            : "hsl(var(--destructive-foreground))";
-          const title = item.seatCode
-            ? `${item.title ?? "Réservation"} – ${item.seatCode}`
-            : (item.title ?? item.effectiveTitle ?? "Réservation");
-
-          return {
-            id: item.id,
-            title,
-            start: item.startDatetime,
-            end: item.endDatetime,
-            display: "block",
-            backgroundColor,
-            borderColor,
-            textColor,
-            extendedProps: {
-              reservationId: item.id,
-              isOwner,
-              canEdit,
-            },
-          };
-        })
-        .filter((e) => e != null) as EventInput[];
+      const mapped: EventInput[] = items.map((item) =>
+        reservationToEvent(item, user?.role?.slug),
+      );
       setEvents(mapped);
       setSelectedReservation(null);
     } catch (e) {
@@ -637,11 +517,17 @@ export function SpaceReservationsModal({
                     </div>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       <div className="flex items-center gap-1">
-                        <span className="inline-flex h-3 w-3 rounded-sm bg-primary" />
+                        <span
+                          className="inline-flex h-3 w-3 rounded-sm"
+                          style={{ backgroundColor: "#2563eb" }}
+                        />
                         <span>Vos réservations</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <span className="inline-flex h-3 w-3 rounded-sm bg-destructive" />
+                        <span
+                          className="inline-flex h-3 w-3 rounded-sm"
+                          style={{ backgroundColor: "#dc2626" }}
+                        />
                         <span>Réservé par un autre membre</span>
                       </div>
                     </div>
@@ -651,6 +537,9 @@ export function SpaceReservationsModal({
                     height={450}
                     selectable
                     editableEvents
+                    displayEventTime={false}
+                    compactTitles
+                    onDatesSet={(start) => setCurrentWeekStart(getWeekRange(start).start)}
                     onSelectSlot={(slot) => {
                       if (isOpenSpace && !selectedSeatId) {
                         toast.error("Sélectionnez d'abord un poste.");
