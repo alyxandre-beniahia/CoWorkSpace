@@ -214,7 +214,8 @@ export function AdminReservationDetailModal({
                 <div>
                   <dt className="text-muted-foreground">Réservé par</dt>
                   <dd className="font-medium">
-                    {detail.userName?.trim() || detail.userId || "—"}
+                    {detail.userName?.trim() ||
+                      (detail.isPrivate && !detail.isOwner ? "Privé" : "—")}
                   </dd>
                 </div>
                 <div>

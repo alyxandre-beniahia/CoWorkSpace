@@ -14,7 +14,7 @@ export type SpaceWithEquipements = {
   description: string | null;
   positionX: number | null;
   positionY: number | null;
-  equipements: { name: string }[];
+  equipements: { name: string; quantity: number }[];
 };
 
 export type SpaceListItem = {

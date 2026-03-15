@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   SPACE_TYPE_LABELS,
@@ -48,6 +48,7 @@ export function SpaceDetailPage() {
 
   const statusLabel = SPACE_STATUS_LABELS[space.status as SpaceStatus]
   const statusClass = SPACE_STATUS_CLASS[space.status as SpaceStatus]
+  const capacityLabel = space.capacity <= 1 ? 'place' : 'places'
 
   return (
     <div className="space-y-6">
@@ -58,33 +59,53 @@ export function SpaceDetailPage() {
       </div>
       <Card>
         <CardHeader>
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <CardTitle className="text-2xl">{space.name}</CardTitle>
-              <CardDescription>
-                {[space.code, SPACE_TYPE_LABELS[space.type as SpaceType]].filter(Boolean).join(' · ')}
-              </CardDescription>
-            </div>
-            <Badge className={statusClass} variant="secondary">
-              {statusLabel}
-            </Badge>
-          </div>
+          <CardTitle className="text-2xl">{space.name}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <p><strong>Capacité :</strong> {space.capacity} place(s)</p>
-          {space.description && (
-            <p className="text-muted-foreground">{space.description}</p>
-          )}
-          {space.equipements.length > 0 && (
-            <div>
-              <strong>Équipements :</strong>
-              <ul className="list-disc list-inside mt-1 text-muted-foreground">
-                {space.equipements.map((e) => (
-                  <li key={e.name}>{e.name}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+        <CardContent>
+          <dl className="grid gap-3 text-sm sm:grid-cols-[auto_1fr]">
+            <dt className="text-muted-foreground font-medium">Code</dt>
+            <dd className="font-medium">{space.code ?? '—'}</dd>
+
+            <dt className="text-muted-foreground font-medium">Type</dt>
+            <dd className="font-medium">{SPACE_TYPE_LABELS[space.type as SpaceType]}</dd>
+
+            <dt className="text-muted-foreground font-medium">Statut</dt>
+            <dd>
+              <Badge className={statusClass} variant="secondary">
+                {statusLabel}
+              </Badge>
+            </dd>
+
+            <dt className="text-muted-foreground font-medium">Capacité</dt>
+            <dd className="font-medium">{space.capacity} {capacityLabel}</dd>
+
+            <dt className="text-muted-foreground font-medium">Description</dt>
+            <dd className="text-muted-foreground">{space.description ?? '—'}</dd>
+
+            <dt className="text-muted-foreground font-medium">Équipements</dt>
+            <dd>
+              {space.equipements.length > 0 ? (
+                <ul className="list-disc list-inside text-muted-foreground">
+                  {space.equipements.map((e, i) => (
+                    <li key={`${e.name}-${i}`}>
+                      {(e.quantity ?? 1) > 1 ? `${e.name} x${e.quantity}` : e.name}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <span className="text-muted-foreground">Aucun</span>
+              )}
+            </dd>
+
+            {(space.positionX != null || space.positionY != null) && (
+              <>
+                <dt className="text-muted-foreground font-medium">Position (plan)</dt>
+                <dd className="font-medium">
+                  X : {space.positionX ?? '—'}, Y : {space.positionY ?? '—'}
+                </dd>
+              </>
+            )}
+          </dl>
         </CardContent>
       </Card>
     </div>

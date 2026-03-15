@@ -153,11 +153,14 @@ export function AdminMembresPage() {
               {members.map((u) => (
                 <li
                   key={u.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
+                  className="grid grid-cols-[1fr_1fr_5rem_auto] items-center gap-3 rounded-md border p-3"
                 >
-                  <span className="font-medium">{u.firstname} {u.lastname}</span>
-                  <span className="text-muted-foreground text-sm">{u.email}</span>
-                  <Badge variant={u.isActive ? 'default' : 'secondary'}>
+                  <span className="font-medium min-w-0 truncate">{u.firstname} {u.lastname}</span>
+                  <span className="text-muted-foreground text-sm min-w-0 truncate">{u.email}</span>
+                  <Badge
+                    variant={u.isActive ? 'default' : 'secondary'}
+                    className="w-16 shrink-0 justify-center"
+                  >
                     {u.isActive ? 'Actif' : 'Inactif'}
                   </Badge>
                   <Button
@@ -165,6 +168,7 @@ export function AdminMembresPage() {
                     variant={u.isActive ? 'outline' : 'default'}
                     onClick={() => handleSetActive(u.id, !u.isActive)}
                     disabled={actingId !== null}
+                    className="shrink-0 justify-self-end"
                   >
                     {u.isActive ? 'Désactiver' : 'Activer'}
                   </Button>

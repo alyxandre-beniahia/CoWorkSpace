@@ -485,7 +485,7 @@ export function AdminEspacesPage() {
                     className="flex items-center justify-between gap-2 rounded-md border px-2 py-1"
                   >
                     <span className="truncate">
-                      {s.name} {s.code ? `(${s.code})` : ''} · {s.capacity}p
+                      {s.name} {s.code ? `(${s.code})` : ''} · {s.capacity} {s.capacity <= 1 ? 'place' : 'places'}
                     </span>
                     <div className="flex gap-1">
                       <Button size="xs" variant="outline" onClick={() => openEditModal(s)}>

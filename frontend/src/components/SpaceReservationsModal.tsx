@@ -578,9 +578,9 @@ export function SpaceReservationsModal({
                 <div className="space-y-1">
                   <p className="font-medium text-foreground">Équipements</p>
                   <div className="flex flex-wrap gap-1">
-                    {space.equipements.map((e) => (
-                      <Badge key={e.name} variant="secondary">
-                        {e.name}
+                    {space.equipements.map((e, i) => (
+                      <Badge key={`${e.name}-${i}`} variant="secondary">
+                        {(e.quantity ?? 1) > 1 ? `${e.name} x${e.quantity}` : e.name}
                       </Badge>
                     ))}
                   </div>
@@ -859,7 +859,7 @@ export function SpaceReservationsModal({
                   htmlFor="reservation-private"
                   className="cursor-pointer text-muted-foreground font-normal"
                 >
-                  Réservation privée (visible uniquement par moi)
+                  Réservation privée
                 </Label>
               </div>
             </div>
@@ -1091,7 +1091,11 @@ export function SpaceReservationsModal({
                 <dl className="grid gap-2 text-sm">
                   <div>
                     <dt className="text-muted-foreground">Titre</dt>
-                    <dd className="font-medium">{detailReservation.title ?? "—"}</dd>
+                    <dd className="font-medium">
+                      {detailReservation.isPrivate && !detailReservation.isOwner
+                        ? "—"
+                        : (detailReservation.title ?? "—")}
+                    </dd>
                   </div>
                   {detailReservation.seatCode && (
                     <div>
@@ -1102,7 +1106,10 @@ export function SpaceReservationsModal({
                   <div>
                     <dt className="text-muted-foreground">Réservé par</dt>
                     <dd className="font-medium">
-                      {detailReservation.userName?.trim() || detailReservation.userId || "—"}
+                      {detailReservation.userName?.trim() ||
+                        (detailReservation.isPrivate && !detailReservation.isOwner
+                          ? "Privé"
+                          : "—")}
                     </dd>
                   </div>
                   <div>
