@@ -1,4 +1,4 @@
-import { PrismaService } from '../../../src/prisma/prisma.service';
+import { PrismaService } from '../../../src/database/prisma.service';
 import { createTestApp } from '../setup/test-app';
 import { cleanupAdminData } from '../setup/test-db';
 import { createTestSpace, createTestEquipement } from '../setup/fixtures/admin.fixtures';
