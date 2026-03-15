@@ -129,11 +129,12 @@ export function SpaceReservationsModal({
             if (!canEdit && !isOwner) {
               return {
                 id: `bg-${item.id}`,
+                title: "",
                 start: item.startDatetime,
                 end: item.endDatetime,
                 display: "background",
-                // Rouge plein pour bien signaler un créneau bloqué
                 backgroundColor: "rgba(220, 38, 38, 1)",
+                extendedProps: { spaceName: "", canEdit: false, isOwner: false },
               };
             }
 
@@ -300,10 +301,12 @@ export function SpaceReservationsModal({
           if (!canEdit && !isOwner) {
             return {
               id: `bg-${item.id}`,
+              title: "",
               start: item.startDatetime,
               end: item.endDatetime,
               display: "background",
               backgroundColor: "rgba(220, 38, 38, 1)",
+              extendedProps: { spaceName: "", canEdit: false, isOwner: false },
             };
           }
 
@@ -381,10 +384,12 @@ export function SpaceReservationsModal({
           if (!canEdit && !isOwner) {
             return {
               id: `bg-${item.id}`,
+              title: "",
               start: item.startDatetime,
               end: item.endDatetime,
               display: "background",
               backgroundColor: "rgba(220, 38, 38, 1)",
+              extendedProps: { spaceName: "", canEdit: false, isOwner: false },
             };
           }
 
@@ -460,10 +465,12 @@ export function SpaceReservationsModal({
           if (!canEdit && !isOwner) {
             return {
               id: `bg-${item.id}`,
+              title: "",
               start: item.startDatetime,
               end: item.endDatetime,
               display: "background",
               backgroundColor: "rgba(220, 38, 38, 1)",
+              extendedProps: { spaceName: "", canEdit: false, isOwner: false },
             };
           }
 
