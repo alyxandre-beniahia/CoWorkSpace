@@ -509,7 +509,10 @@ export function SpaceReservationsModal({
 
   if (!space) return null;
 
-  const canEditDetail = detailReservation?.isOwner || user?.role?.slug === "admin";
+  const isAdmin = user?.role?.slug === "admin";
+  const canEditDetail = detailReservation?.isOwner || isAdmin;
+  const maskPrivateDetail =
+    detailReservation?.isPrivate && !detailReservation?.isOwner && !isAdmin;
 
   return (
     <>
@@ -1092,7 +1095,7 @@ export function SpaceReservationsModal({
                   <div>
                     <dt className="text-muted-foreground">Titre</dt>
                     <dd className="font-medium">
-                      {detailReservation.isPrivate && !detailReservation.isOwner
+                      {maskPrivateDetail
                         ? "—"
                         : (detailReservation.title ?? "—")}
                     </dd>
@@ -1107,9 +1110,7 @@ export function SpaceReservationsModal({
                     <dt className="text-muted-foreground">Réservé par</dt>
                     <dd className="font-medium">
                       {detailReservation.userName?.trim() ||
-                        (detailReservation.isPrivate && !detailReservation.isOwner
-                          ? "Privé"
-                          : "—")}
+                        (maskPrivateDetail ? "Privé" : "—")}
                     </dd>
                   </div>
                   <div>
