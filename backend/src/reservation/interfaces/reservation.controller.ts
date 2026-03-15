@@ -44,13 +44,17 @@ export class ReservationController {
     @Query('spaceId') spaceId?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('start') start?: string,
+    @Query('end') end?: string,
     @Request() req?: AuthRequest,
   ) {
     const filters: { userId?: string; spaceId?: string; from?: Date; to?: Date; currentUserId?: string } = {};
     if (userId) filters.userId = userId;
     if (spaceId) filters.spaceId = spaceId;
-    if (from) filters.from = new Date(from);
-    if (to) filters.to = new Date(to);
+    const fromVal = from ?? start;
+    const toVal = to ?? end;
+    if (fromVal) filters.from = new Date(fromVal);
+    if (toVal) filters.to = new Date(toVal);
     if (req?.user) filters.currentUserId = req.user.userId;
     // Par défaut, un membre ne voit que ses réservations (sauf si spaceId fourni = vue calendrier d'un espace)
     if (req?.user?.role !== 'admin' && !filters.userId && !filters.spaceId) {
@@ -62,7 +66,7 @@ export class ReservationController {
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   async getById(@Param('id') id: string, @Request() req: AuthRequest) {
-    return this.getReservationByIdUseCase.run(id, req.user.userId);
+    return this.getReservationByIdUseCase.run(id, req.user.userId, req.user.role);
   }
 
   @Patch(':id')
@@ -72,7 +76,7 @@ export class ReservationController {
     @Request() req: AuthRequest,
     @Body() dto: UpdateReservationDto,
   ) {
-    return this.updateReservationUseCase.run(id, req.user.userId, dto);
+    return this.updateReservationUseCase.run(id, req.user.userId, dto, req.user.role);
   }
 
   @Patch(':id/annuler')
@@ -83,6 +87,6 @@ export class ReservationController {
     @Request() req?: AuthRequest,
   ) {
     const cancelScope = scope === 'all' ? 'all' : 'this';
-    return this.cancelReservationUseCase.run(id, req!.user.userId, cancelScope);
+    return this.cancelReservationUseCase.run(id, req!.user.userId, cancelScope, req!.user.role);
   }
 }
