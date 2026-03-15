@@ -42,6 +42,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 export type { ReservationCalendarItem };
 
@@ -108,6 +109,8 @@ export function SpaceReservationsModal({
   space,
 }: SpaceReservationsModalProps) {
   const { token, user } = useAuth();
+  const isMobile = useMediaQuery(768);
+  const calendarHeight = isMobile ? 320 : 450;
   const [events, setEvents] = useState<EventInput[]>([]);
   const [reservations, setReservations] = useState<ReservationCalendarItem[]>(
     [],
@@ -650,7 +653,7 @@ export function SpaceReservationsModal({
                   </div>
                   <ReservationCalendar
                     events={events}
-                    height={450}
+                    height={calendarHeight}
                     selectable
                     editableEvents
                     displayEventTime={false}

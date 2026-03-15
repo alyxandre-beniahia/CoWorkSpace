@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -107,6 +107,12 @@ export function RegisterPage() {
             <Button type="submit" className="w-full min-h-[44px] md:min-h-0" disabled={submitting}>
               {submitting ? 'Inscription…' : "S'inscrire"}
             </Button>
+            <p className="text-center text-sm text-muted-foreground mt-4">
+              Déjà un compte ?{' '}
+              <Link to="/login" className="text-primary font-medium hover:underline">
+                Se connecter
+              </Link>
+            </p>
           </form>
         </CardContent>
       </Card>

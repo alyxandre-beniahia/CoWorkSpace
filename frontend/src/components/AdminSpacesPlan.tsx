@@ -75,7 +75,7 @@ export function AdminSpacesPlan({ spaces, onPositionChange }: AdminSpacesPlanPro
             {pendingSpaces.map((s) => (
               <div
                 key={s.id}
-                className="inline-flex items-center gap-2 rounded-lg border bg-card px-4 py-2.5 text-sm shadow-sm hover:border-primary/30 transition-colors"
+                className="inline-flex flex-col gap-2 rounded-lg border bg-card px-4 py-2.5 text-sm shadow-sm hover:border-primary/30 transition-colors sm:flex-row sm:items-center"
               >
                 <span className="font-medium">{s.name}</span>
                 <Button
