@@ -29,6 +29,13 @@ export interface IReservationRepository {
     excludeReservationId?: string,
     seatId?: string | null,
   ): Promise<boolean>;
+  /** Vérifie si l'utilisateur a déjà une réservation qui chevauche [start, end] (tous espaces). */
+  hasUserOverlap(
+    userId: string,
+    start: Date,
+    end: Date,
+    excludeReservationId?: string,
+  ): Promise<boolean>;
   listForCalendar(params: {
     spaceId?: string;
     start: Date;

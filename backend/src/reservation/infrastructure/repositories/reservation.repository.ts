@@ -207,6 +207,24 @@ export class ReservationRepository implements IReservationRepository {
     return count > 0;
   }
 
+  async hasUserOverlap(
+    userId: string,
+    start: Date,
+    end: Date,
+    excludeReservationId?: string,
+  ): Promise<boolean> {
+    const where: Prisma.ReservationWhereInput = {
+      userId,
+      deletedAt: null,
+      AND: [{ startDatetime: { lt: end }, endDatetime: { gt: start } }],
+    };
+    if (excludeReservationId) {
+      where.id = { not: excludeReservationId };
+    }
+    const count = await this.prisma.reservation.count({ where });
+    return count > 0;
+  }
+
   async listForCalendar(params: {
     spaceId?: string;
     start: Date;

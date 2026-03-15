@@ -231,7 +231,11 @@ export function SpaceReservationsModal({
   }, [daySlots]);
 
   async function handleCreateReservation() {
-    if (!space || !token || !selectedSlot) return;
+    if (!space || !selectedSlot) return;
+    if (!token) {
+      toast.error("Vous devez être connecté pour faire une réservation.");
+      return;
+    }
     if (isOpenSpace && !selectedSeatId) {
       toast.error("Veuillez sélectionner un poste pour cet open space.");
       return;
@@ -341,8 +345,15 @@ export function SpaceReservationsModal({
       setEvents(mapped);
       setSelectedSlot(null);
     } catch (e) {
+      const isUnauthorized =
+        e instanceof Error &&
+        (e.message.includes("401") || e.message.toLowerCase().includes("unauthorized"));
       toast.error(
-        e instanceof Error ? e.message : "Impossible de créer la réservation",
+        isUnauthorized
+          ? "Vous devez être connecté pour faire une réservation."
+          : e instanceof Error
+            ? e.message
+            : "Impossible de créer la réservation",
       );
     } finally {
       setSubmitting(false);
