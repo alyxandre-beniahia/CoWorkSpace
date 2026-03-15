@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useAuth } from '@/contexts/AuthContext'
 import { api } from '@/lib/api'
 import { AdminSpacesPlan } from '@/components/AdminSpacesPlan'
@@ -63,6 +64,8 @@ export function AdminEspacesPage() {
   const [pendingEquipements, setPendingEquipements] = useState<{ equipementId: string; name: string; quantity: number }[]>([])
   const [createAttachEquipementId, setCreateAttachEquipementId] = useState<string>('')
   const [createAttachQuantity, setCreateAttachQuantity] = useState(1)
+  const [confirmDeleteSpaceOpen, setConfirmDeleteSpaceOpen] = useState(false)
+  const [pendingDeleteSpaceId, setPendingDeleteSpaceId] = useState<string | null>(null)
 
   async function load() {
     if (!token) return
@@ -201,13 +204,20 @@ export function AdminEspacesPage() {
     }
   }
 
-  async function handleDelete(id: string) {
+  function openConfirmDeleteSpace(id: string) {
     if (!token) return
-    if (!window.confirm('Supprimer cet espace ?')) return
+    setPendingDeleteSpaceId(id)
+    setConfirmDeleteSpaceOpen(true)
+  }
+
+  async function performDeleteSpace() {
+    if (!token || !pendingDeleteSpaceId) return
     try {
-      await api(`/admin/espaces/${id}`, { method: 'DELETE', token })
+      await api(`/admin/espaces/${pendingDeleteSpaceId}`, { method: 'DELETE', token })
       toast.success('Espace supprimé')
-      if (editingSpace?.id === id) closeEditModal()
+      if (editingSpace?.id === pendingDeleteSpaceId) closeEditModal()
+      setConfirmDeleteSpaceOpen(false)
+      setPendingDeleteSpaceId(null)
       await load()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Impossible de supprimer l'espace")
@@ -491,7 +501,7 @@ export function AdminEspacesPage() {
                       <Button size="xs" variant="outline" onClick={() => openEditModal(s)}>
                         Modifier
                       </Button>
-                      <Button size="xs" variant="ghost" onClick={() => handleDelete(s.id)}>
+                      <Button size="xs" variant="ghost" onClick={() => openConfirmDeleteSpace(s.id)}>
                         Supprimer
                       </Button>
                     </div>
@@ -703,6 +713,20 @@ export function AdminEspacesPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={confirmDeleteSpaceOpen}
+        onOpenChange={(open) => {
+          setConfirmDeleteSpaceOpen(open)
+          if (!open) setPendingDeleteSpaceId(null)
+        }}
+        title="Supprimer cet espace ?"
+        description="Cette action est irréversible. L'espace et ses associations seront supprimés."
+        confirmLabel="Supprimer"
+        cancelLabel="Annuler"
+        variant="destructive"
+        onConfirm={performDeleteSpace}
+      />
     </div>
   )
 }

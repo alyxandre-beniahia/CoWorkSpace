@@ -41,6 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export type { ReservationCalendarItem };
 
@@ -141,6 +142,8 @@ export function SpaceReservationsModal({
   const [editRecurrenceFreq, setEditRecurrenceFreq] = useState<RecurrenceFreq>("daily");
   const [editRecurrenceWeekdays, setEditRecurrenceWeekdays] = useState<number[]>([]);
   const [editRecurrenceEndAt, setEditRecurrenceEndAt] = useState<Date | null>(null);
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
 
   const isOpenSpace = space?.type === "OPEN_SPACE";
 
@@ -391,13 +394,18 @@ export function SpaceReservationsModal({
     }
   }
 
-  async function handleCancelReservation(reservationId?: string) {
+  function openConfirmCancel(reservationId?: string) {
     const idToCancel = reservationId ?? detailReservationId ?? selectedReservation?.id;
     if (!space || !token || !idToCancel) return;
-    if (!window.confirm("Annuler cette réservation ?")) return;
+    setPendingCancelId(idToCancel);
+    setConfirmCancelOpen(true);
+  }
+
+  async function performCancelReservation() {
+    if (!space || !token || !pendingCancelId) return;
     setSubmitting(true);
     try {
-      await api(`/reservations/${idToCancel}/annuler`, {
+      await api(`/reservations/${pendingCancelId}/annuler`, {
         method: "PATCH",
         token,
       });
@@ -422,6 +430,7 @@ export function SpaceReservationsModal({
       setDetailModalOpen(false);
       setDetailReservationId(null);
       setDetailReservation(null);
+      setPendingCancelId(null);
     } catch (e) {
       toast.error(
         e instanceof Error ? e.message : "Impossible d'annuler la réservation",
@@ -902,7 +911,7 @@ export function SpaceReservationsModal({
                   variant="outline"
                   className="min-w-[160px]"
                   disabled={!selectedReservation || submitting}
-                  onClick={() => handleCancelReservation()}
+                  onClick={() => openConfirmCancel()}
                 >
                   Annuler la réservation
                 </Button>
@@ -1159,7 +1168,7 @@ export function SpaceReservationsModal({
                       <Button
                         variant="destructive"
                         disabled={submitting}
-                        onClick={() => handleCancelReservation()}
+                        onClick={() => openConfirmCancel()}
                       >
                         Annuler la réservation
                       </Button>
@@ -1178,6 +1187,21 @@ export function SpaceReservationsModal({
         )}
       </DialogContent>
     </Dialog>
+
+    <ConfirmDialog
+      open={confirmCancelOpen}
+      onOpenChange={(open) => {
+        setConfirmCancelOpen(open);
+        if (!open) setPendingCancelId(null);
+      }}
+      title="Annuler cette réservation ?"
+      description="Cette action est irréversible. La réservation sera annulée."
+      confirmLabel="Annuler la réservation"
+      cancelLabel="Retour"
+      variant="destructive"
+      onConfirm={performCancelReservation}
+      loading={submitting}
+    />
     </>
   );
 }
