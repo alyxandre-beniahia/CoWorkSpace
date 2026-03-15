@@ -1,4 +1,4 @@
-import { PrismaService } from '../../../src/prisma/prisma.service';
+import { PrismaService } from '../../../src/database/prisma.service';
 import { createTestApp, getAuthToken } from '../setup/test-app';
 import { cleanupReservationData } from '../setup/test-db';
 import { createTestReservation } from '../setup/fixtures/reservation.fixtures';
