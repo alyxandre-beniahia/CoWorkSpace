@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
+import { NotificationModule } from '../notification/notification.module';
+import { NOTIFICATION_SENDER } from '../notification/application/ports/notification-sender.port';
+import type { INotificationSender } from '../notification/application/ports/notification-sender.port';
 import { PrismaModule } from '../database/prisma.module';
 import { PrismaService } from '../database/prisma.service';
 import { AdminMembresController } from './infrastructure/http/controllers/admin-membres.controller';
@@ -40,7 +43,7 @@ import { GetDashboardStatsUseCase } from './application/use-cases/get-dashboard-
 import { GetActivityUseCase } from './application/use-cases/get-activity.use-case';
 
 @Module({
-  imports: [AuthModule, PrismaModule],
+  imports: [AuthModule, NotificationModule, PrismaModule],
   controllers: [
     AdminMembresController,
     AdminEspacesController,
@@ -70,13 +73,15 @@ import { GetActivityUseCase } from './application/use-cases/get-activity.use-cas
     },
     {
       provide: ValidateRegistrationUseCase,
-      useFactory: (r: IAdminMemberRepository) => new ValidateRegistrationUseCase(r),
-      inject: [ADMIN_MEMBER_REPOSITORY],
+      useFactory: (r: IAdminMemberRepository, notificationSender: INotificationSender) =>
+        new ValidateRegistrationUseCase(r, notificationSender),
+      inject: [ADMIN_MEMBER_REPOSITORY, NOTIFICATION_SENDER],
     },
     {
       provide: RejectRegistrationUseCase,
-      useFactory: (r: IAdminMemberRepository) => new RejectRegistrationUseCase(r),
-      inject: [ADMIN_MEMBER_REPOSITORY],
+      useFactory: (r: IAdminMemberRepository, notificationSender: INotificationSender) =>
+        new RejectRegistrationUseCase(r, notificationSender),
+      inject: [ADMIN_MEMBER_REPOSITORY, NOTIFICATION_SENDER],
     },
     {
       provide: SetMemberActiveUseCase,

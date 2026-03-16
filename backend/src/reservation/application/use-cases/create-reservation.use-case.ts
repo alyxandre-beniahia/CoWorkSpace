@@ -14,12 +14,29 @@ import {
   RESERVATION_WINDOW_MESSAGE,
   RESERVATION_FUTURE_MESSAGE,
 } from '../utils/reservation-window.utils';
+import type { INotificationSender } from '../../../notification/application/ports/notification-sender.port';
+import type { ReservationNotificationPayload } from '../../../notification/domain/entities/reservation-notification.payload';
+
+function toPayload(
+  r: { id: string; userId: string; userEmail: string; spaceName: string; startDatetime: Date; endDatetime: Date; title: string | null },
+): ReservationNotificationPayload {
+  return {
+    userId: r.userId,
+    userEmail: r.userEmail,
+    reservationId: r.id,
+    spaceName: r.spaceName,
+    startDatetime: r.startDatetime,
+    endDatetime: r.endDatetime,
+    title: r.title,
+  };
+}
 
 export class CreateReservationUseCase {
   constructor(
     private readonly reservationRepository: IReservationRepository,
     private readonly idGenerator: IIdGenerator,
     private readonly recurrenceExpander: IRecurrenceExpander,
+    private readonly notificationSender: INotificationSender,
   ) {}
 
   async run(userId: string, dto: CreateReservationDto, role?: string) {
@@ -120,6 +137,9 @@ export class CreateReservationUseCase {
       }));
 
       const created = await this.reservationRepository.createMany(inputs);
+      for (const r of created) {
+        await this.notificationSender.sendReservationConfirmation(toPayload(r));
+      }
       return { created: created.length, recurrenceGroupId, first: created[0] };
     }
 
@@ -146,7 +166,7 @@ export class CreateReservationUseCase {
       throw new ReservationConflictError('Ce créneau chevauche une réservation existante.');
     }
 
-    return this.reservationRepository.create({
+    const created = await this.reservationRepository.create({
       spaceId: dto.spaceId,
       seatId: dto.seatId ?? null,
       userId: effectiveUserId,
@@ -158,5 +178,7 @@ export class CreateReservationUseCase {
       recurrenceEndAt: null,
       recurrenceGroupId: null,
     });
+    await this.notificationSender.sendReservationConfirmation(toPayload(created));
+    return created;
   }
 }

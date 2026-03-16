@@ -9,6 +9,10 @@ const mockEmailService = {
   sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
   sendRegistrationApprovedEmail: jest.fn().mockResolvedValue(undefined),
   sendRegistrationRejectedEmail: jest.fn().mockResolvedValue(undefined),
+  sendReservationConfirmationEmail: jest.fn().mockResolvedValue(undefined),
+  sendReservationReminder24hEmail: jest.fn().mockResolvedValue(undefined),
+  sendReservationCancelledEmail: jest.fn().mockResolvedValue(undefined),
+  sendReservationModifiedEmail: jest.fn().mockResolvedValue(undefined),
 };
 
 export async function createTestApp(): Promise<{

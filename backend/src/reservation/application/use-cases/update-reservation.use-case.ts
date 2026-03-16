@@ -13,9 +13,28 @@ import {
   RESERVATION_WINDOW_MESSAGE,
   RESERVATION_FUTURE_MESSAGE,
 } from '../utils/reservation-window.utils';
+import type { INotificationSender } from '../../../notification/application/ports/notification-sender.port';
+import type { ReservationNotificationPayload } from '../../../notification/domain/entities/reservation-notification.payload';
+
+function toPayload(
+  r: { id: string; userId: string; userEmail: string; spaceName: string; startDatetime: Date; endDatetime: Date; title: string | null },
+): ReservationNotificationPayload {
+  return {
+    userId: r.userId,
+    userEmail: r.userEmail,
+    reservationId: r.id,
+    spaceName: r.spaceName,
+    startDatetime: r.startDatetime,
+    endDatetime: r.endDatetime,
+    title: r.title,
+  };
+}
 
 export class UpdateReservationUseCase {
-  constructor(private readonly reservationRepository: IReservationRepository) {}
+  constructor(
+    private readonly reservationRepository: IReservationRepository,
+    private readonly notificationSender: INotificationSender,
+  ) {}
 
   async run(reservationId: string, userId: string, dto: UpdateReservationDto, role?: string) {
     const input: UpdateReservationInput = {
@@ -78,6 +97,10 @@ export class UpdateReservationUseCase {
       throw new ReservationConflictError('Ce créneau chevauche une réservation existante.');
     }
 
-    return this.reservationRepository.update(reservationId, input);
+    const updated = await this.reservationRepository.update(reservationId, input);
+    if (updated) {
+      await this.notificationSender.sendReservationModified(toPayload(updated));
+    }
+    return updated;
   }
 }

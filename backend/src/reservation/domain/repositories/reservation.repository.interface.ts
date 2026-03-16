@@ -41,4 +41,19 @@ export interface IReservationRepository {
     start: Date;
     end: Date;
   }): Promise<ReservationCalendarItem[]>;
+  /** Réservations dont le début est dans [start, end] (pour rappel 24h). */
+  findReservationsStartingBetween(
+    start: Date,
+    end: Date,
+  ): Promise<
+    Array<{
+      id: string;
+      userId: string;
+      userEmail: string;
+      spaceName: string;
+      startDatetime: Date;
+      endDatetime: Date;
+      title: string | null;
+    }>
+  >;
 }

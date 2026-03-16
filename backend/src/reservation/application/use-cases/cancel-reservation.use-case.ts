@@ -4,9 +4,28 @@ import {
   ReservationNotFoundError,
   ReservationForbiddenError,
 } from '../../domain/errors/reservation.errors';
+import type { INotificationSender } from '../../../notification/application/ports/notification-sender.port';
+import type { ReservationNotificationPayload } from '../../../notification/domain/entities/reservation-notification.payload';
+
+function toPayload(
+  r: { id: string; userId: string; userEmail: string; spaceName: string; startDatetime: Date; endDatetime: Date; title: string | null },
+): ReservationNotificationPayload {
+  return {
+    userId: r.userId,
+    userEmail: r.userEmail,
+    reservationId: r.id,
+    spaceName: r.spaceName,
+    startDatetime: r.startDatetime,
+    endDatetime: r.endDatetime,
+    title: r.title,
+  };
+}
 
 export class CancelReservationUseCase {
-  constructor(private readonly reservationRepository: IReservationRepository) {}
+  constructor(
+    private readonly reservationRepository: IReservationRepository,
+    private readonly notificationSender: INotificationSender,
+  ) {}
 
   async run(reservationId: string, userId: string, scope: CancelScope = 'this', role?: string) {
     const existing = await this.reservationRepository.findById(reservationId, userId);
@@ -20,6 +39,7 @@ export class CancelReservationUseCase {
       );
     }
 
+    const payload = toPayload(existing);
     let deleted: boolean | number;
     if (scope === 'all' && existing.recurrenceGroupId) {
       const count = await this.reservationRepository.softDeleteByRecurrenceGroupId(
@@ -28,6 +48,9 @@ export class CancelReservationUseCase {
       deleted = count > 0;
     } else {
       deleted = await this.reservationRepository.softDelete(reservationId);
+    }
+    if (deleted) {
+      await this.notificationSender.sendReservationCancelled(payload);
     }
     return { success: !!deleted };
   }
