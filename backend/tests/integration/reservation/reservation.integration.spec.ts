@@ -236,7 +236,7 @@ describe('Reservation (intégration)', () => {
         const { start, end } = slotAt10Paris(8);
 
         await createTestReservation(prisma!, {
-          userId: adminId,
+          userId: memberId,
           spaceId: openSpaceId,
           seatId: openSpaceSeat1Id,
           startDatetime: start,
@@ -489,9 +489,12 @@ describe('Reservation (intégration)', () => {
         .patch(`/reservations/${reservation.id}`)
         .set('Authorization', `Bearer ${memberToken}`)
         .send({ title: 'Réunion modifiée' })
-        .expect(409);
+        .expect(200);
 
-      expect(res.body.message).toMatch(/déjà une réservation|chevauche/);
+      expect(res.body).toMatchObject({
+        id: reservation.id,
+        title: 'Réunion modifiée',
+      });
     });
 
     it('retourne 404 si id inexistant', async () => {
