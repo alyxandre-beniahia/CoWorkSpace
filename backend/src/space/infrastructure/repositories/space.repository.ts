@@ -12,6 +12,9 @@ export class SpaceRepository implements ISpaceRepository {
   async list(filters: SpaceListFilters): Promise<SpaceListItem[]> {
     const where: Prisma.SpaceWhereInput = {};
     if (filters.type) where.type = filters.type as PrismaSpaceType;
+    if (filters.name && filters.name.trim()) {
+      where.name = { contains: filters.name.trim(), mode: 'insensitive' };
+    }
     if (filters.capacityMin != null || filters.capacityMax != null) {
       where.capacity = {};
       if (filters.capacityMin != null) where.capacity.gte = filters.capacityMin;

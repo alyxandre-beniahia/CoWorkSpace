@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import type { EventInput } from '@fullcalendar/core'
 import { ReservationCalendar, type CalendarSlot } from '@/components/ReservationCalendar'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
@@ -76,6 +77,8 @@ function colorForSpaceId(spaceId: string, spaceName?: string | null): string {
 
 export function AdminReservationCalendar() {
   const { token, user } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
   const isMobile = useMediaQuery(768)
   const isAdmin = user?.role?.slug === 'admin'
   const [events, setEvents] = useState<EventInput[]>([])
@@ -88,6 +91,15 @@ export function AdminReservationCalendar() {
   const [selectedSlot, setSelectedSlot] = useState<CalendarSlot | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const calendarHeight: number | string = isMobile ? '84vh' : 630
+
+  useEffect(() => {
+    const id = (location.state as { openReservationId?: string } | null)?.openReservationId
+    if (id) {
+      setSelectedReservationId(id)
+      setDetailModalOpen(true)
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+  }, [location.state, location.pathname, navigate])
 
   useEffect(() => {
     api<SpaceListItem[]>('/spaces')

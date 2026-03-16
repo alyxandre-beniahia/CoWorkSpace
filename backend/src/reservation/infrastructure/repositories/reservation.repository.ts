@@ -19,6 +19,9 @@ export class ReservationRepository implements IReservationRepository {
     const where: Prisma.ReservationWhereInput = { deletedAt: null };
     if (filters.userId) where.userId = filters.userId;
     if (filters.spaceId) where.spaceId = filters.spaceId;
+    if (filters.title && filters.title.trim()) {
+      where.title = { contains: filters.title.trim(), mode: 'insensitive' };
+    }
     if (filters.from && filters.to) {
       where.AND = [
         { endDatetime: { gt: filters.from } },
