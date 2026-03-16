@@ -87,7 +87,7 @@ export function AdminReservationCalendar() {
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<CalendarSlot | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
-  const calendarHeight = isMobile ? 400 : 630
+  const calendarHeight: number | string = isMobile ? '84vh' : 630
 
   useEffect(() => {
     api<SpaceListItem[]>('/spaces')
