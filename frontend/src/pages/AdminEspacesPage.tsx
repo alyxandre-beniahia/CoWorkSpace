@@ -277,7 +277,7 @@ export function AdminEspacesPage() {
         quantity != null
           ? `/admin/espaces/${editingSpace.id}/equipements/${equipementId}?quantity=${quantity}`
           : `/admin/espaces/${editingSpace.id}/equipements/${equipementId}`
-      await api(url, { method: 'DELETE', token })
+      await api(url, { method: 'DELETE' })
       toast.success(quantity != null ? '1 unité retirée' : 'Équipement retiré')
       await load()
     } catch (e) {
