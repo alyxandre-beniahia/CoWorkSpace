@@ -10,8 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar } from "@/components/ui/calendar";
 import {
   ReservationCalendar,
   type CalendarSlot,
@@ -234,53 +232,62 @@ export function SpaceReservationsModal({
       .finally(() => setDetailLoading(false));
   }, [detailModalOpen, detailReservationId, token]);
 
-  const daySlots: HourSlot[] = useMemo(() => {
-    const baseDate = selectedDate;
-    const slots: HourSlot[] = [];
-    const relevantReservations =
-      isOpenSpace && selectedSeatId
-        ? (reservations ?? []).filter((r) => r.seatId === selectedSeatId)
-        : reservations ?? [];
-    for (let hour = 8; hour < 20; hour++) {
-      const start = new Date(baseDate);
-      start.setHours(hour, 0, 0, 0);
-      const end = new Date(baseDate);
-      end.setHours(hour + 1, 0, 0, 0);
-      const isBusy = relevantReservations.some((r) => {
-        const evStart = new Date(r.startDatetime);
-        const evEnd = new Date(r.endDatetime);
-        return evStart < end && evEnd > start;
-      });
-      slots.push({ start, end, isBusy });
+  const selectedSlotAvailability = useMemo(() => {
+    if (!space || !selectedSlot) return null;
+
+    const capacity = space.capacity ?? 0;
+    if (capacity <= 0) {
+      return { available: 0, capacity, isSeatBusy: false };
     }
-    return slots;
-  }, [reservations, selectedDate, isOpenSpace, selectedSeatId]);
+
+    const slotStart = selectedSlot.start;
+    const slotEnd = selectedSlot.end;
+
+    const overlaps = (r: ReservationCalendarItem) => {
+      const evStart = new Date(r.startDatetime);
+      const evEnd = new Date(r.endDatetime);
+      return evStart < slotEnd && evEnd > slotStart;
+    };
+
+    if (isOpenSpace) {
+      const relevant = reservations ?? [];
+      const overlapping = relevant.filter(overlaps);
+
+      const occupiedSeatIds = new Set(
+        overlapping
+          .map((r) => r.seatId)
+          .filter((id): id is string => Boolean(id)),
+      );
+      const occupiedCount = occupiedSeatIds.size;
+      const remaining = Math.max(0, capacity - occupiedCount);
+
+      const isSeatBusy =
+        !!selectedSeatId &&
+        overlapping.some((r) => r.seatId === selectedSeatId);
+
+      return {
+        available: remaining,
+        capacity,
+        isSeatBusy,
+      };
+    }
+
+    const overlappingForSpace = (reservations ?? []).filter(overlaps);
+    const hasOverlap = overlappingForSpace.length > 0;
+
+    return {
+      available: hasOverlap ? 0 : capacity,
+      capacity,
+      isSeatBusy: false,
+    };
+  }, [space, selectedSlot, reservations, isOpenSpace, selectedSeatId]);
 
   const { badgeLabel, badgeVariant } = useMemo(() => {
-    if (daySlots.length === 0) {
-      return {
-        badgeLabel: "Disponible ce jour",
-        badgeVariant: "default" as const,
-      };
-    }
-    const busyCount = daySlots.filter((s) => s.isBusy).length;
-    if (busyCount === 0) {
-      return {
-        badgeLabel: "Disponible ce jour",
-        badgeVariant: "default" as const,
-      };
-    }
-    if (busyCount === daySlots.length) {
-      return {
-        badgeLabel: "Occupée ce jour",
-        badgeVariant: "destructive" as const,
-      };
-    }
     return {
-      badgeLabel: "Partiellement occupée ce jour",
-      badgeVariant: "secondary" as const,
+      badgeLabel: "Calendrier des disponibilités (semaine)",
+      badgeVariant: "default" as const,
     };
-  }, [daySlots]);
+  }, []);
 
   async function handleCreateReservation() {
     if (!space || !selectedSlot) return;
@@ -635,6 +642,9 @@ export function SpaceReservationsModal({
                   {space.code}
                 </span>
               )}
+              <p className="text-xs text-muted-foreground">
+                Choisissez un créneau libre dans le calendrier pour réserver cette salle.
+              </p>
             </div>
             <Badge variant={badgeVariant} className="w-fit">
               {badgeLabel}
@@ -643,180 +653,183 @@ export function SpaceReservationsModal({
         </DialogHeader>
         <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
         <div className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.9fr)]">
-            <div className="space-y-3 text-sm text-muted-foreground">
-              <div>
-                <p className="font-medium text-foreground">
-                  Détails de la salle
-                </p>
-                <p>Capacité : {space.capacity} place(s)</p>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <div className="space-y-2">
+              <p className="font-medium text-foreground">
+                Détails de la salle
+              </p>
+              <dl className="space-y-1">
+                <div className="flex flex-wrap items-baseline gap-1">
+                  <dt className="text-muted-foreground">Capacité</dt>
+                  <dd className="font-medium">
+                    {space.capacity} place{space.capacity > 1 ? "s" : ""}
+                  </dd>
+                </div>
                 {space.description && (
-                  <p className="mt-1">{space.description}</p>
+                  <div>
+                    <dt className="text-muted-foreground">Description</dt>
+                    <dd>{space.description}</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+            {isOpenSpace && (
+              <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm">
+                <Label htmlFor="seat-select" className="font-medium text-foreground">
+                  Poste
+                </Label>
+                {seats.length > 0 ? (
+                  <Select
+                    value={selectedSeatId ?? ""}
+                    onValueChange={(v) => setSelectedSeatId(v || null)}
+                  >
+                    <SelectTrigger
+                      id="seat-select"
+                      className="min-h-[44px] md:min-h-0 w-full max-w-[200px]"
+                    >
+                      <SelectValue placeholder="Choisir un poste" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {seats.map((seat) => (
+                        <SelectItem key={seat.id} value={seat.id}>
+                          {seat.code}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-muted-foreground text-xs">
+                    Aucun poste configuré pour cet espace.
+                  </p>
                 )}
               </div>
-              {isOpenSpace && (
-                <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm">
-                  <Label htmlFor="seat-select" className="font-medium text-foreground">
-                    Poste
-                  </Label>
-                  {seats.length > 0 ? (
-                    <Select
-                      value={selectedSeatId ?? ""}
-                      onValueChange={(v) => setSelectedSeatId(v || null)}
-                    >
-                      <SelectTrigger
-                        id="seat-select"
-                        className="min-h-[44px] md:min-h-0 w-full max-w-[200px]"
-                      >
-                        <SelectValue placeholder="Choisir un poste" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {seats.map((seat) => (
-                          <SelectItem key={seat.id} value={seat.id}>
-                            {seat.code}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="text-muted-foreground text-xs">
-                      Aucun poste configuré pour cet espace.
-                    </p>
-                  )}
+            )}
+            {space.equipements.length > 0 && (
+              <div className="space-y-1">
+                <p className="font-medium text-foreground">Équipements</p>
+                <div className="flex flex-wrap gap-1">
+                  {space.equipements.map((e, i) => (
+                    <Badge key={`${e.name}-${i}`} variant="secondary">
+                      {(e.quantity ?? 1) > 1 ? `${e.name} x${e.quantity}` : e.name}
+                    </Badge>
+                  ))}
                 </div>
-              )}
-              {space.equipements.length > 0 && (
-                <div className="space-y-1">
-                  <p className="font-medium text-foreground">Équipements</p>
-                  <div className="flex flex-wrap gap-1">
-                    {space.equipements.map((e, i) => (
-                      <Badge key={`${e.name}-${i}`} variant="secondary">
-                        {(e.quantity ?? 1) > 1 ? `${e.name} x${e.quantity}` : e.name}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="space-y-2">
-                <p className="font-medium text-foreground">Jour de référence</p>
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(d) => {
-                    if (!d) return;
-                    setSelectedDate(d);
-                    const { start } = getWeekRange(d);
-                    setCurrentWeekStart(start);
-                  }}
-                  className="border rounded-lg"
-                />
               </div>
-            </div>
-
-            <div className="space-y-3">
-              <Tabs defaultValue="week" className="space-y-3">
-                <TabsList>
-                  <TabsTrigger value="day">Jour</TabsTrigger>
-                  <TabsTrigger value="week">Semaine</TabsTrigger>
-                </TabsList>
-                <TabsContent value="week">
-                  <div className="space-y-1 mb-2 text-sm">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium">
-                        Calendrier des disponibilités (semaine)
-                      </span>
-                      <span className="text-muted-foreground">
-                        Cliquez-glissez pour sélectionner un créneau libre
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <span
-                          className="inline-flex h-3 w-3 rounded-sm"
-                          style={{ backgroundColor: "#2563eb" }}
-                        />
-                        <span>Vos réservations</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span
-                          className="inline-flex h-3 w-3 rounded-sm"
-                          style={{ backgroundColor: "#dc2626" }}
-                        />
-                        <span>Réservé par un autre membre</span>
-                      </div>
-                    </div>
-                  </div>
-                  <ReservationCalendar
-                    events={events}
-                    height={calendarHeight}
-                    selectable
-                    editableEvents
-                    displayEventTime={false}
-                    compactTitles
-                    onDatesSet={(start) => setCurrentWeekStart(getWeekRange(start).start)}
-                    onSelectSlot={(slot) => {
-                      if (isOpenSpace && !selectedSeatId) {
-                        toast.error("Sélectionnez d'abord un poste.");
-                        return;
-                      }
-                      const relevantReservations =
-                        isOpenSpace && selectedSeatId
-                          ? reservations.filter((r) => r.seatId === selectedSeatId)
-                          : reservations;
-                      const overlapsBusy = relevantReservations.some((r) => {
-                        const start = new Date(r.startDatetime);
-                        const end = new Date(r.endDatetime);
-                        return start < slot.end && end > slot.start;
-                      });
-                      if (overlapsBusy) {
-                        toast.error("Ce créneau est déjà réservé pour ce poste.");
-                        return;
-                      }
-                      setSelectedSlot(slot);
-                      setSelectedReservation(null);
-                    }}
-                    onEventClick={({ id, start, end }) => {
-                      setSelectedReservation({ id, start, end });
-                      setDetailReservationId(id);
-                      setDetailModalOpen(true);
-                      setSelectedSlot(null);
-                    }}
-                    onEventChange={({ id, start, end }) => {
-                      setSelectedReservation({ id, start, end });
-                      setSelectedSlot(null);
-                    }}
-                  />
-                </TabsContent>
-                <TabsContent value="day">
-                  <div className="space-y-2 text-sm">
-                    <p className="font-medium">Vue jour (récapitulatif)</p>
-                    <p className="text-muted-foreground">
-                      La vue jour détaillée pourra lister ici les créneaux
-                      occupés et libres pour la date sélectionnée.
-                    </p>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </div>
-
-            <div className="space-y-3">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full sm:w-auto"
-                onClick={() => setCreateReservationModalOpen(true)}
-              >
-                Créer une réservation
-              </Button>
-            </div>
+            )}
           </div>
 
-          <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm">
+          <div className="space-y-4">
+            <div className="space-y-1 mb-2 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium">
+                  Calendrier des disponibilités
+                </span>
+                <span className="text-muted-foreground">
+                  Cliquez-glissez pour sélectionner un créneau libre
+                </span>
+              </div>
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <span
+                    className="inline-flex h-3 w-3 rounded-sm"
+                    style={{ backgroundColor: "#2563eb" }}
+                  />
+                  <span>Vos réservations</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span
+                    className="inline-flex h-3 w-3 rounded-sm"
+                    style={{ backgroundColor: "#dc2626" }}
+                  />
+                  <span>Réservé par un autre membre</span>
+                </div>
+              </div>
+            </div>
+            <ReservationCalendar
+              events={events}
+              height={calendarHeight}
+              selectable
+              editableEvents
+              displayEventTime={false}
+              compactTitles
+              onDatesSet={(start) =>
+                setCurrentWeekStart(getWeekRange(start).start)
+              }
+              onSelectSlot={(slot) => {
+                if (isOpenSpace && !selectedSeatId) {
+                  toast.error("Sélectionnez d'abord un poste.");
+                  return;
+                }
+                const relevantReservations =
+                  isOpenSpace && selectedSeatId
+                    ? reservations.filter((r) => r.seatId === selectedSeatId)
+                    : reservations;
+                const overlapsBusy = relevantReservations.some((r) => {
+                  const start = new Date(r.startDatetime);
+                  const end = new Date(r.endDatetime);
+                  return start < slot.end && end > slot.start;
+                });
+                if (overlapsBusy) {
+                  toast.error("Ce créneau est déjà réservé pour ce poste.");
+                  return;
+                }
+                setSelectedSlot(slot);
+                setSelectedReservation(null);
+              }}
+              onEventClick={({ id, start, end }) => {
+                setSelectedReservation({ id, start, end });
+                setDetailReservationId(id);
+                setDetailModalOpen(true);
+                setSelectedSlot(null);
+              }}
+              onEventChange={({ id, start, end }) => {
+                setSelectedReservation({ id, start, end });
+                setSelectedSlot(null);
+              }}
+            />
+            {selectedSlot && (
+              <div className="rounded-md bg-muted/50 px-3 py-2 text-sm text-foreground">
+                <span className="font-medium">
+                  Créneau sélectionné&nbsp;:
+                </span>{" "}
+                <span className="text-muted-foreground">
+                  {selectedSlot.start.toLocaleString("fr-FR", {
+                    weekday: "short",
+                    day: "2-digit",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}{" "}
+                  →{" "}
+                  {selectedSlot.end.toLocaleTimeString("fr-FR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-start md:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full md:w-auto"
+              onClick={() => setCreateReservationModalOpen(true)}
+            >
+              Créer une réservation manuellement
+            </Button>
+          </div>
+
+          <div className="space-y-3 rounded-lg border bg-card p-3 text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-medium text-foreground">Ma réservation</p>
+            </div>
+            <div className="h-px w-full bg-border/60" />
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex flex-col">
                   <span className="font-medium text-foreground">
-                    Créneau sélectionné
+                    Création de réservation
                   </span>
                   {selectedSlot ? (
                     <span className="text-muted-foreground">
@@ -836,7 +849,8 @@ export function SpaceReservationsModal({
                   ) : (
                     <span className="text-muted-foreground">
                       Sélectionnez un créneau libre dans le calendrier pour le
-                      réserver.
+                      réserver. Le bouton ci-contre s&apos;activera
+                      automatiquement.
                     </span>
                   )}
                 </div>
@@ -852,6 +866,52 @@ export function SpaceReservationsModal({
                   {submitting ? "Réservation…" : "Réserver ce créneau"}
                 </Button>
               </div>
+              {selectedSlot && selectedSlotAvailability && (
+                <div className="text-xs text-muted-foreground">
+                  {isOpenSpace ? (
+                    <>
+                      <span
+                        className={
+                          selectedSlotAvailability.available > 0
+                            ? "font-medium text-emerald-600 dark:text-emerald-400"
+                            : "font-medium text-destructive"
+                        }
+                      >
+                        Disponibilité :{" "}
+                        {selectedSlotAvailability.available}/
+                        {selectedSlotAvailability.capacity} postes libres sur ce
+                        créneau.
+                      </span>
+                      {selectedSeatId && (
+                        <div>
+                          Poste sélectionné :{" "}
+                          {selectedSlotAvailability.isSeatBusy ? (
+                            <span className="text-destructive">
+                              déjà réservé
+                            </span>
+                          ) : (
+                            "libre"
+                          )}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <span
+                      className={
+                        selectedSlotAvailability.available > 0
+                          ? "font-medium text-emerald-600 dark:text-emerald-400"
+                          : "font-medium text-destructive"
+                      }
+                    >
+                      Disponibilité : {selectedSlotAvailability.available}/
+                      {selectedSlotAvailability.capacity} place
+                      {selectedSlotAvailability.capacity > 1 ? "s" : ""} libre
+                      {selectedSlotAvailability.capacity > 1 ? "s" : ""} sur ce
+                      créneau.
+                    </span>
+                  )}
+                </div>
+              )}
               {selectedSlot && (
                 <div className="grid gap-2">
                   <Label htmlFor="home-reservation-title" className="text-foreground">
@@ -990,9 +1050,7 @@ export function SpaceReservationsModal({
           <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm">
             <div className="flex items-center justify-between gap-2">
               <div className="flex flex-col">
-                <span className="font-medium text-foreground">
-                  Réservation sélectionnée
-                </span>
+                <span className="font-medium text-foreground">Réservation existante</span>
                 {selectedReservation ? (
                   <span className="text-muted-foreground">
                     {selectedReservation.start.toLocaleString("fr-FR", {
@@ -1010,8 +1068,8 @@ export function SpaceReservationsModal({
                   </span>
                 ) : (
                   <span className="text-muted-foreground">
-                    Cliquez sur une réservation ou déplacez-la dans le
-                    calendrier pour la modifier ou l&apos;annuler.
+                    Cliquez sur une réservation dans le calendrier ou
+                    déplacez-la pour la modifier ou l&apos;annuler.
                   </span>
                 )}
               </div>

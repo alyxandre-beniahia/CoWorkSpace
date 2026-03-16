@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '@/lib/api'
 import { FloorPlanSVG, type SpaceForPlan, type PublicPlanStatus } from '@/components/FloorPlanSVG'
 import type { SpaceDetail, SpaceListItem } from '@/types/space'
@@ -41,7 +41,6 @@ export function HomeSpacesPlan({ onSelectSpace }: HomeSpacesPlanProps) {
     return () => clearInterval(interval)
   }, [])
 
-
   function getPublicStatus(spaceId: string, type: string): PublicPlanStatus {
     if (type === 'OTHER') return 'other'
     const forSpace = reservationsToday.filter((r) => r.spaceId === spaceId)
@@ -55,17 +54,50 @@ export function HomeSpacesPlan({ onSelectSpace }: HomeSpacesPlanProps) {
     return 'available'
   }
 
-  const spacesForPlan: SpaceForPlan[] = spaces.map((s) => ({
-    id: s.id,
-    name: s.name,
-    code: s.code,
-    type: s.type,
-    capacity: s.capacity,
-    status: s.status,
-    positionX: s.positionX,
-    positionY: s.positionY,
-    publicStatus: getPublicStatus(s.id, s.type),
-  }))
+  const spacesForPlan: SpaceForPlan[] = useMemo(() => {
+    if (spaces.length === 0) return []
+
+    const nowMs = now
+
+    return spaces.map((s) => {
+      const forSpace = reservationsToday.filter((r) => r.spaceId === s.id)
+      const overlappingNow = forSpace.filter((r) => {
+        const start = new Date(r.startDatetime).getTime()
+        const end = new Date(r.endDatetime).getTime()
+        return start <= nowMs && nowMs < end
+      })
+
+      let availableSeatsNow: number | undefined
+      if (s.type === 'OPEN_SPACE') {
+        const occupiedSeatIds = new Set(
+          overlappingNow
+            .map((r) => r.seatId)
+            .filter((id): id is string => Boolean(id))
+        )
+        const occupiedCount = occupiedSeatIds.size
+        const capacity = s.capacity ?? 0
+        const remaining = Math.max(0, capacity - occupiedCount)
+        availableSeatsNow = remaining
+      } else if (s.type === 'MEETING_ROOM' || s.type === 'HOT_DESK') {
+        // Si une réservation chevauche le créneau actuel, la salle est indisponible
+        const hasOverlap = overlappingNow.length > 0
+        availableSeatsNow = hasOverlap ? 0 : s.capacity ?? 0
+      }
+
+      return {
+        id: s.id,
+        name: s.name,
+        code: s.code,
+        type: s.type,
+        capacity: s.capacity,
+        status: s.status,
+        positionX: s.positionX,
+        positionY: s.positionY,
+        publicStatus: getPublicStatus(s.id, s.type),
+        availableSeatsNow,
+      }
+    })
+  }, [spaces, reservationsToday, now])
 
   async function handleSelectSpace(space: SpaceForPlan) {
     try {
@@ -81,7 +113,8 @@ export function HomeSpacesPlan({ onSelectSpace }: HomeSpacesPlanProps) {
       <div>
         <h2 className="text-xl font-semibold tracking-tight">Plan des espaces</h2>
         <p className="text-muted-foreground text-sm">
-          Vue plan des espaces pour aujourd&apos;hui — cliquez pour réserver
+          Vue plan des espaces pour aujourd&apos;hui — cliquez pour réserver. Le nombre de
+          places libres indiqué correspond au créneau actuel.
         </p>
       </div>
       <div className="mx-auto w-full max-w-[1200px]">

@@ -17,6 +17,8 @@ export type SpaceForPlan = {
   description?: string | null
   /** En mode public : détermine la couleur (autre / disponible / réservé / occupé). */
   publicStatus?: PublicPlanStatus
+  /** Nombre de places/postes libres sur le créneau actuel (vue accueil). */
+  availableSeatsNow?: number
 }
 
 type FloorPlanSVGProps = {
@@ -323,9 +325,13 @@ function DraggableSpace({
           fillOpacity={0.8}
           textAnchor="middle"
         >
-          {space.publicStatus != null
-            ? { other: 'Autre', available: 'Disponible', reserved: 'Réservé', occupied: 'Occupé' }[space.publicStatus]
-            : SPACE_STATUS_LABELS[space.status]}
+          {typeof space.availableSeatsNow === 'number'
+            ? space.type === 'OPEN_SPACE'
+              ? `${space.availableSeatsNow}/${space.capacity} postes libres maintenant`
+              : `${space.availableSeatsNow}/${space.capacity} place${space.capacity > 1 ? 's' : ''} libre${space.capacity > 1 ? 's' : ''} maintenant`
+            : space.publicStatus != null
+              ? { other: 'Autre', available: 'Disponible', reserved: 'Réservé', occupied: 'Occupé' }[space.publicStatus]
+              : SPACE_STATUS_LABELS[space.status]}
         </text>
       )}
     </g>
