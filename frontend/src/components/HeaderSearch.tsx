@@ -25,7 +25,7 @@ type HeaderSearchProps = {
 }
 
 export function HeaderSearch({ onResultSelect }: HeaderSearchProps) {
-  const { token, user } = useAuth()
+  const { token } = useAuth()
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
