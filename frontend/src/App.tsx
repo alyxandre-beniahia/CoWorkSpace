@@ -26,7 +26,14 @@ function App() {
       <AuthProvider>
         <Toaster />
         <Routes>
-          <Route path="/" element={<Layout />}>
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<HomePage />} />
             <Route path="espaces" element={<EspacesPage />} />
             <Route path="espaces/:id" element={<SpaceDetailPage />} />

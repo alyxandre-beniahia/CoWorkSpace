@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, Outlet } from 'react-router-dom'
+import { Link, Outlet, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 import { HeaderSearch } from '@/components/HeaderSearch'
@@ -13,6 +13,7 @@ import {
 
 export function Layout() {
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const [sheetOpen, setSheetOpen] = useState(false)
 
   const navLinks = (
@@ -36,7 +37,15 @@ export function Layout() {
         </Link>
       )}
       {user ? (
-        <Button variant="outline" size="sm" onClick={() => { setSheetOpen(false); logout(); }}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setSheetOpen(false)
+            logout()
+            navigate('/login', { replace: true })
+          }}
+        >
           Déconnexion
         </Button>
       ) : (
