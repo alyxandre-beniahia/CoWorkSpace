@@ -1,9 +1,7 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { vi } from 'vitest'
 import { AdminEspacesPage } from './AdminEspacesPage'
 import { AuthProvider } from '@/contexts/AuthContext'
-import * as apiModule from '@/lib/api'
-
 vi.mock('@/lib/api', () => ({
   api: vi.fn().mockResolvedValue([]),
   apiBlob: vi.fn().mockResolvedValue(new Blob(['pdf'], { type: 'application/pdf' })),

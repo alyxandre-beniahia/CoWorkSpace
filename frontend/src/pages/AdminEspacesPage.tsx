@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useAuth } from '@/contexts/AuthContext'
-import { api } from '@/lib/api'
+import { api, apiBlob } from '@/lib/api'
 import { AdminSpacesPlan } from '@/components/AdminSpacesPlan'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { SpaceType, SpaceStatus } from '@/types/space'
