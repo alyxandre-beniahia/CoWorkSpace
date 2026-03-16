@@ -83,12 +83,6 @@ function reservationToEvent(
   };
 }
 
-type HourSlot = {
-  start: Date;
-  end: Date;
-  isBusy: boolean;
-};
-
 type SelectedReservation = {
   id: string;
   start: Date;
@@ -116,7 +110,6 @@ export function SpaceReservationsModal({
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(
     () => getWeekRange(new Date()).start,
   );
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedSlot, setSelectedSlot] = useState<CalendarSlot | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [selectedReservation, setSelectedReservation] =
@@ -208,7 +201,6 @@ export function SpaceReservationsModal({
   useEffect(() => {
     if (!open) {
       setSelectedSlot(null);
-      setSelectedDate(new Date());
       setSelectedReservation(null);
       setIsPrivate(false);
       setReservationTitle("");
