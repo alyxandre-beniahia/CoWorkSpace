@@ -26,6 +26,7 @@ export class SpaceController {
   async list(@Query() query: ListSpacesQueryDto) {
     const filters: SpaceListFilters = {
       ...(query.type && { type: query.type }),
+      ...(query.name && query.name.trim() && { name: query.name.trim() }),
       ...(query.equipementId && { equipementId: query.equipementId }),
       ...(query.capacityMin != null && query.capacityMin !== '' && { capacityMin: parseInt(query.capacityMin, 10) }),
       ...(query.capacityMax != null && query.capacityMax !== '' && { capacityMax: parseInt(query.capacityMax, 10) }),

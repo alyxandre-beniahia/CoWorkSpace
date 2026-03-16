@@ -17,6 +17,7 @@ import { AdminEspacesPage } from '@/pages/AdminEspacesPage'
 import { AdminEquipementsPage } from '@/pages/AdminEquipementsPage'
 import { AdminLayout } from '@/components/AdminLayout'
 import { SpaceDetailPage } from '@/pages/SpaceDetailPage'
+import { ReservationDetailPage } from '@/pages/ReservationDetailPage'
 
 function App() {
   return (
@@ -28,6 +29,14 @@ function App() {
             <Route index element={<HomePage />} />
             <Route path="espaces" element={<EspacesPage />} />
             <Route path="espaces/:id" element={<SpaceDetailPage />} />
+            <Route
+              path="reservations/:id"
+              element={
+                <ProtectedRoute>
+                  <ReservationDetailPage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="profil"
               element={

@@ -74,6 +74,7 @@ export class ReservationController {
     @Query('spaceId') spaceId?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('title') title?: string,
     @Query('start') start?: string,
     @Query('end') end?: string,
     @Query('forPlan') forPlan?: string,
@@ -82,10 +83,19 @@ export class ReservationController {
     const filters: ReservationListFilters = {};
     if (userId) filters.userId = userId;
     if (spaceId) filters.spaceId = spaceId;
+    if (title && title.trim()) filters.title = title.trim();
     const fromVal = from ?? start;
     const toVal = to ?? end;
     if (fromVal) filters.from = new Date(fromVal);
     if (toVal) filters.to = new Date(toVal);
+    // Lors d'une recherche par titre sans plage, limiter à 30 jours passés et 90 jours à venir
+    if (filters.title && !filters.from && !filters.to) {
+      const now = new Date();
+      filters.from = new Date(now);
+      filters.from.setDate(filters.from.getDate() - 30);
+      filters.to = new Date(now);
+      filters.to.setDate(filters.to.getDate() + 90);
+    }
     if (req?.user) {
       filters.currentUserId = req.user.userId;
       filters.role = req.user.role;

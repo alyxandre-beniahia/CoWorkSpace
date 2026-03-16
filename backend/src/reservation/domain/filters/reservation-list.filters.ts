@@ -7,6 +7,8 @@ export type ReservationListFilters = {
   spaceId?: string;
   from?: Date;
   to?: Date;
+  /** Recherche par titre (contient, insensible à la casse). */
+  title?: string;
   currentUserId?: string;
   role?: string;
   /** Pour l’affichage calendrier : ne pas masquer le titre des réservations privées. */
