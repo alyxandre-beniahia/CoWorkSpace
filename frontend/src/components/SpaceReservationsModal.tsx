@@ -100,7 +100,7 @@ export function SpaceReservationsModal({
   onOpenChange,
   space,
 }: SpaceReservationsModalProps) {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const isMobile = useMediaQuery(768);
   const calendarHeight: number | string = isMobile ? "77vh" : 450;
   const [events, setEvents] = useState<EventInput[]>([]);
@@ -155,7 +155,7 @@ export function SpaceReservationsModal({
   const isOpenSpace = space?.type === "OPEN_SPACE";
 
   useEffect(() => {
-    if (!open || !space || !token) {
+    if (!open || !space || !user) {
       setEvents([]);
       setReservations([]);
       setSelectedSlot(null);
@@ -169,7 +169,7 @@ export function SpaceReservationsModal({
       return;
     }
     if (space.type === "OPEN_SPACE") {
-      api<SeatItem[]>(`/spaces/${space.id}/seats`, { token })
+      api<SeatItem[]>(`/spaces/${space.id}/seats`)
         .then(setSeats)
         .catch(() => setSeats([]));
     } else {
@@ -183,9 +183,7 @@ export function SpaceReservationsModal({
       end,
       forPlan: "true",
     });
-    api<ReservationCalendarItem[]>(`/reservations?${params.toString()}`, {
-      token,
-    })
+    api<ReservationCalendarItem[]>(`/reservations?${params.toString()}`)
       .then((items) => {
         setReservations(items);
         const mapped: EventInput[] = items.map((item) =>
@@ -196,7 +194,7 @@ export function SpaceReservationsModal({
       .catch(() => {
         setEvents([]);
       });
-  }, [open, space, token, currentWeekStart]);
+  }, [open, space, user, currentWeekStart]);
 
   useEffect(() => {
     if (!open) {
@@ -212,17 +210,17 @@ export function SpaceReservationsModal({
   }, [open]);
 
   useEffect(() => {
-    if (!detailModalOpen || !detailReservationId || !token) {
+    if (!detailModalOpen || !detailReservationId || !user) {
       setDetailReservation(null);
       return;
     }
     setDetailLoading(true);
     setDetailReservation(null);
-    api<ReservationDetail>(`/reservations/${detailReservationId}`, { token })
+    api<ReservationDetail>(`/reservations/${detailReservationId}`)
       .then(setDetailReservation)
       .catch(() => setDetailReservation(null))
       .finally(() => setDetailLoading(false));
-  }, [detailModalOpen, detailReservationId, token]);
+  }, [detailModalOpen, detailReservationId, user]);
 
   const selectedSlotAvailability = useMemo(() => {
     if (!space || !selectedSlot) return null;
@@ -283,7 +281,7 @@ export function SpaceReservationsModal({
 
   async function handleCreateReservation() {
     if (!space || !selectedSlot) return;
-    if (!token) {
+    if (!user) {
       toast.error("Vous devez être connecté pour faire une réservation.");
       return;
     }
@@ -325,7 +323,6 @@ export function SpaceReservationsModal({
         "/reservations",
         {
           method: "POST",
-          token,
           body: JSON.stringify(body),
         }
       );
@@ -344,7 +341,6 @@ export function SpaceReservationsModal({
       });
       const items = await api<ReservationCalendarItem[]>(
         `/reservations?${params.toString()}`,
-        { token },
       );
       setReservations(items);
       const mapped: EventInput[] = items.map((item) =>
@@ -369,7 +365,7 @@ export function SpaceReservationsModal({
   }
 
   async function handleCreateReservationManual() {
-    if (!space || !token) {
+    if (!space || !user) {
       toast.error("Vous devez être connecté pour faire une réservation.");
       return;
     }
@@ -415,7 +411,6 @@ export function SpaceReservationsModal({
       }
       const result = await api<{ created?: number }>("/reservations", {
         method: "POST",
-        token,
         body: JSON.stringify(body),
       });
       if (result && typeof result === "object" && "created" in result && typeof result.created === "number") {
@@ -432,7 +427,6 @@ export function SpaceReservationsModal({
       });
       const items = await api<ReservationCalendarItem[]>(
         `/reservations?${params.toString()}`,
-        { token },
       );
       setReservations(items);
       setEvents(items.map((item) => reservationToEvent(item, user?.role?.slug)));
@@ -450,7 +444,7 @@ export function SpaceReservationsModal({
   }
 
   async function handleUpdateReservation() {
-    if (!space || !token || !selectedReservation) return;
+    if (!space || !user || !selectedReservation) return;
     setSubmitting(true);
     try {
       const updateBody: UpdateReservationBody = {
@@ -459,7 +453,6 @@ export function SpaceReservationsModal({
       };
       await api(`/reservations/${selectedReservation.id}`, {
         method: "PATCH",
-        token,
         body: JSON.stringify(updateBody),
       });
       toast.success("Réservation mise à jour");
@@ -472,7 +465,6 @@ export function SpaceReservationsModal({
       });
       const items = await api<ReservationCalendarItem[]>(
         `/reservations?${params.toString()}`,
-        { token },
       );
       setReservations(items);
       const mapped: EventInput[] = items.map((item) =>
@@ -493,18 +485,17 @@ export function SpaceReservationsModal({
 
   function openConfirmCancel(reservationId?: string) {
     const idToCancel = reservationId ?? detailReservationId ?? selectedReservation?.id;
-    if (!space || !token || !idToCancel) return;
+    if (!space || !user || !idToCancel) return;
     setPendingCancelId(idToCancel);
     setConfirmCancelOpen(true);
   }
 
   async function performCancelReservation() {
-    if (!space || !token || !pendingCancelId) return;
+    if (!space || !user || !pendingCancelId) return;
     setSubmitting(true);
     try {
       await api(`/reservations/${pendingCancelId}/annuler`, {
         method: "PATCH",
-        token,
       });
       toast.success("Réservation annulée");
       const { start, end } = getWeekRangeApiParams(currentWeekStart);
@@ -516,7 +507,6 @@ export function SpaceReservationsModal({
       });
       const items = await api<ReservationCalendarItem[]>(
         `/reservations?${params.toString()}`,
-        { token },
       );
       setReservations(items);
       const mapped: EventInput[] = items.map((item) =>
@@ -554,7 +544,7 @@ export function SpaceReservationsModal({
   }
 
   async function handleSaveDetailEdit() {
-    if (!token || !detailReservationId || !detailReservation || !space) return;
+    if (!user || !detailReservationId || !detailReservation || !space) return;
     const start = new Date(editStart);
     const end = new Date(editEnd);
     if (end <= start) {
@@ -580,14 +570,11 @@ export function SpaceReservationsModal({
       };
       await api(`/reservations/${detailReservationId}`, {
         method: "PATCH",
-        token,
         body: JSON.stringify(body),
       });
       toast.success("Réservation mise à jour");
       setDetailEditing(false);
-      const updated = await api<ReservationDetail>(`/reservations/${detailReservationId}`, {
-        token,
-      });
+      const updated = await api<ReservationDetail>(`/reservations/${detailReservationId}`);
       setDetailReservation(updated);
       const { start: s, end: e } = getWeekRangeApiParams(currentWeekStart);
       const params = new URLSearchParams({
@@ -596,9 +583,7 @@ export function SpaceReservationsModal({
         end: e,
         forPlan: "true",
       });
-      const items = await api<ReservationCalendarItem[]>(`/reservations?${params.toString()}`, {
-        token,
-      });
+      const items = await api<ReservationCalendarItem[]>(`/reservations?${params.toString()}`);
       setReservations(items);
       setEvents(items.map((item) => reservationToEvent(item, user?.role?.slug)));
       if (selectedReservation?.id === detailReservationId) {

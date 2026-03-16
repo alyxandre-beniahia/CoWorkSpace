@@ -12,8 +12,9 @@ import {
   UseGuards,
   Request,
   Query,
+  Res,
 } from '@nestjs/common';
-import type { Request as ExpressRequest } from 'express';
+import type { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import { JwtAuthGuard } from '../../../../shared/guards/jwt-auth.guard';
 import { LoginUseCase } from '../../../application/use-cases/login.use-case';
 import { GetMeUseCase } from '../../../application/use-cases/get-me.use-case';
@@ -50,12 +51,37 @@ export class AuthController {
   ) {}
 
   @Post(AUTH_ROUTES.LOGIN)
-  async login(@Body() dto: LoginDto) {
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: ExpressResponse) {
     try {
-      return await this.loginUseCase.run(dto);
+      const { access_token } = await this.loginUseCase.run(dto);
+      const isProd = process.env.NODE_ENV === 'production';
+
+      res.cookie('access_token', access_token, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: isProd ? 'strict' : 'lax',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      // Retour du token pour compatibilité éventuelle des tests,
+      // mais le front doit se baser sur le cookie httpOnly.
+      return { access_token };
     } catch (err) {
       mapAuthDomainErrorToHttp(err);
     }
+  }
+
+  @Post(AUTH_ROUTES.LOGOUT)
+  async logout(@Res({ passthrough: true }) res: ExpressResponse) {
+    const isProd = process.env.NODE_ENV === 'production';
+    res.clearCookie('access_token', {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'strict' : 'lax',
+      path: '/',
+    });
+    return { success: true };
   }
 
   @Get(AUTH_ROUTES.ME)

@@ -18,19 +18,19 @@ type MemberItem = {
 }
 
 export function AdminMembresPage() {
-  const { token } = useAuth()
+  const { user } = useAuth()
   const [pending, setPending] = useState<MemberItem[]>([])
   const [members, setMembers] = useState<MemberItem[]>([])
   const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<string | null>(null)
 
   async function load() {
-    if (!token) return
+    if (!user) return
     setLoading(true)
     try {
       const [pendingRes, membersRes] = await Promise.all([
-        api<MemberItem[]>('/admin/membres?filter=pending', { token }),
-        api<MemberItem[]>('/admin/membres?filter=members', { token }),
+        api<MemberItem[]>('/admin/membres?filter=pending'),
+        api<MemberItem[]>('/admin/membres?filter=members'),
       ])
       setPending(Array.isArray(pendingRes) ? pendingRes : [])
       setMembers(Array.isArray(membersRes) ? membersRes : [])
@@ -45,13 +45,13 @@ export function AdminMembresPage() {
 
   useEffect(() => {
     load()
-  }, [token])
+  }, [user])
 
   async function handleValidate(id: string) {
-    if (!token) return
+    if (!user) return
     setActingId(id)
     try {
-      await api(`/admin/membres/${id}/valider`, { token, method: 'PATCH' })
+      await api(`/admin/membres/${id}/valider`, { method: 'PATCH' })
       toast.success('Inscription validée')
       await load()
     } catch (e) {
@@ -62,10 +62,10 @@ export function AdminMembresPage() {
   }
 
   async function handleReject(id: string) {
-    if (!token) return
+    if (!user) return
     setActingId(id)
     try {
-      await api(`/admin/membres/${id}/refuser`, { token, method: 'PATCH' })
+      await api(`/admin/membres/${id}/refuser`, { method: 'PATCH' })
       toast.success('Inscription refusée')
       await load()
     } catch (e) {
@@ -76,10 +76,10 @@ export function AdminMembresPage() {
   }
 
   async function handleSetActive(id: string, isActive: boolean) {
-    if (!token) return
+    if (!user) return
     setActingId(id)
     try {
-      await api(`/admin/membres/${id}/actif?actif=${isActive}`, { token, method: 'PATCH' })
+      await api(`/admin/membres/${id}/actif?actif=${isActive}`, { method: 'PATCH' })
       toast.success(isActive ? 'Membre activé' : 'Membre désactivé')
       await load()
     } catch (e) {
@@ -89,7 +89,7 @@ export function AdminMembresPage() {
     }
   }
 
-  if (!token) return null
+  if (!user) return null
 
   return (
     <div className="space-y-8">

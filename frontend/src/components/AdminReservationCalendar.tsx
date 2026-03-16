@@ -76,7 +76,7 @@ function colorForSpaceId(spaceId: string, spaceName?: string | null): string {
 }
 
 export function AdminReservationCalendar() {
-  const { token, user } = useAuth()
+  const { user } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const isMobile = useMediaQuery(768)
@@ -108,7 +108,7 @@ export function AdminReservationCalendar() {
   }, [])
 
   useEffect(() => {
-    if (!token) return
+    if (!user) return
     const { start, end } = getWeekRange(weekStart)
     const rangeStart = new Date(start)
     rangeStart.setDate(rangeStart.getDate() - 14)
@@ -120,7 +120,7 @@ export function AdminReservationCalendar() {
     })
     if (selectedSpaceId) params.set('spaceId', selectedSpaceId)
 
-    api<ReservationListItem[]>(`/reservations?${params.toString()}`, { token })
+    api<ReservationListItem[]>(`/reservations?${params.toString()}`)
       .then((items) => {
         const mapped: EventInput[] = items.map((item) => {
           const effectiveTitle =
@@ -149,7 +149,7 @@ export function AdminReservationCalendar() {
         setEvents(mapped)
       })
       .catch(() => setEvents([]))
-  }, [token, weekStart, selectedSpaceId, refreshKey])
+  }, [user, weekStart, selectedSpaceId, refreshKey])
 
   return (
     <Card>

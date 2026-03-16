@@ -25,7 +25,7 @@ type HeaderSearchProps = {
 }
 
 export function HeaderSearch({ onResultSelect }: HeaderSearchProps) {
-  const { token } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -45,10 +45,9 @@ export function HeaderSearch({ onResultSelect }: HeaderSearchProps) {
     try {
       const [spacesRes, reservationsRes] = await Promise.all([
         api<SpaceListItem[]>(`/spaces?name=${encodeURIComponent(trimmed)}`),
-        token
+        user
           ? api<ReservationSearchItem[]>(
               `/reservations?title=${encodeURIComponent(trimmed)}`,
-              { token }
             ).catch(() => [] as ReservationSearchItem[])
           : Promise.resolve([] as ReservationSearchItem[]),
       ])
@@ -60,7 +59,7 @@ export function HeaderSearch({ onResultSelect }: HeaderSearchProps) {
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [user])
 
   useEffect(() => {
     const t = setTimeout(() => {

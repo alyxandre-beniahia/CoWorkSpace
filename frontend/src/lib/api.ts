@@ -17,7 +17,11 @@ export async function api<T>(
   if (token) {
     (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
   }
-  const res = await fetch(url, { ...init, headers });
+  const res = await fetch(url, {
+    ...init,
+    headers,
+    credentials: 'include',
+  });
   if (!res.ok) {
     const body = await res.text();
     let message = body;
@@ -49,7 +53,11 @@ export async function apiBlob(
   if (token) {
     (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
   }
-  const res = await fetch(url, { ...init, headers });
+  const res = await fetch(url, {
+    ...init,
+    headers,
+    credentials: 'include',
+  });
   if (!res.ok) {
     const body = await res.text();
     let message = body;

@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 
 /** Formulaire profil : champs pré-remplis depuis le contexte, sauvegarde via PATCH /auth/me. */
 export function ProfilePage() {
-  const { user, token, updateUser } = useAuth()
+  const { user, updateUser } = useAuth()
   const [firstname, setFirstname] = useState(user?.firstname ?? '')
   const [lastname, setLastname] = useState(user?.lastname ?? '')
   const [phone, setPhone] = useState(user?.phone ?? '')
@@ -21,7 +21,7 @@ export function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [submittingPassword, setSubmittingPassword] = useState(false)
 
-  if (!user || !token) {
+  if (!user) {
     return null
   }
 
@@ -37,8 +37,7 @@ export function ProfilePage() {
           firstname: firstname.trim(),
           lastname: lastname.trim(),
           phone: phone.trim() || undefined,
-        }),
-        token,
+        })
       })
       updateUser(updated)
       toast.success('Profil mis à jour')
@@ -67,8 +66,7 @@ export function ProfilePage() {
           currentPassword,
           newPassword,
           confirmPassword,
-        }),
-        token,
+        })
       })
       setCurrentPassword('')
       setNewPassword('')

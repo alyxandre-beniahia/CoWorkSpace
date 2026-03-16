@@ -54,7 +54,7 @@ export function AdminReservationDetailModal({
   reservationId,
   onUpdated,
 }: AdminReservationDetailModalProps) {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [detail, setDetail] = useState<ReservationDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -70,13 +70,13 @@ export function AdminReservationDetailModal({
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
 
   useEffect(() => {
-    if (!open || !reservationId || !token) {
+    if (!open || !reservationId || !user) {
       setDetail(null);
       setEditing(false);
       return;
     }
     setLoading(true);
-    api<ReservationDetail>(`/reservations/${reservationId}`, { token })
+    api<ReservationDetail>(`/reservations/${reservationId}`)
       .then((data) => {
         setDetail(data);
         setEditStart(toDatetimeLocal(data.startDatetime));
@@ -108,10 +108,10 @@ export function AdminReservationDetailModal({
         setDetail(null);
       })
       .finally(() => setLoading(false));
-  }, [open, reservationId, token]);
+  }, [open, reservationId, user]);
 
   async function handleUpdate() {
-    if (!token || !detail) return;
+    if (!user || !detail) return;
     const start = new Date(editStart);
     const end = new Date(editEnd);
     if (end <= start) {
@@ -145,14 +145,11 @@ export function AdminReservationDetailModal({
       }
       await api(`/reservations/${detail.id}`, {
         method: "PATCH",
-        token,
         body: JSON.stringify(body),
       });
       toast.success("Réservation mise à jour.");
       setEditing(false);
-      const updated = await api<ReservationDetail>(`/reservations/${detail.id}`, {
-        token,
-      });
+      const updated = await api<ReservationDetail>(`/reservations/${detail.id}`);
       setDetail(updated);
       onUpdated?.();
     } catch (e) {
@@ -165,17 +162,16 @@ export function AdminReservationDetailModal({
   }
 
   function openConfirmCancel() {
-    if (!token || !detail) return;
+    if (!user || !detail) return;
     setConfirmCancelOpen(true);
   }
 
   async function performCancelReservation() {
-    if (!token || !detail) return;
+    if (!user || !detail) return;
     setSubmitting(true);
     try {
       await api(`/reservations/${detail.id}/annuler`, {
         method: "PATCH",
-        token,
       });
       toast.success("Réservation annulée.");
       setConfirmCancelOpen(false);

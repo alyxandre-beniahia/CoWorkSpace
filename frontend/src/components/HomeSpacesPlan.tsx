@@ -4,14 +4,12 @@ import { FloorPlanSVG, type SpaceForPlan, type PublicPlanStatus } from '@/compon
 import type { SpaceDetail, SpaceListItem } from '@/types/space'
 import type { ReservationCalendarItem } from '@/types/reservation'
 import { getDayRange, toIsoString } from '@/lib/date'
-import { useAuth } from '@/contexts/AuthContext'
 
 type HomeSpacesPlanProps = {
   onSelectSpace: (space: SpaceDetail) => void
 }
 
 export function HomeSpacesPlan({ onSelectSpace }: HomeSpacesPlanProps) {
-  const { token } = useAuth()
   const [spaces, setSpaces] = useState<SpaceListItem[]>([])
   const [reservationsToday, setReservationsToday] = useState<ReservationCalendarItem[]>([])
 
@@ -22,7 +20,6 @@ export function HomeSpacesPlan({ onSelectSpace }: HomeSpacesPlanProps) {
   }, [])
 
   useEffect(() => {
-    if (!token) return
     const today = new Date()
     const { start, end } = getDayRange(today)
     const params = new URLSearchParams({
@@ -30,10 +27,10 @@ export function HomeSpacesPlan({ onSelectSpace }: HomeSpacesPlanProps) {
       end: toIsoString(end),
       forPlan: 'true',
     })
-    api<ReservationCalendarItem[]>(`/reservations?${params.toString()}`, { token })
+    api<ReservationCalendarItem[]>(`/reservations?${params.toString()}`)
       .then(setReservationsToday)
       .catch(() => setReservationsToday([]))
-  }, [token])
+  }, [])
 
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {

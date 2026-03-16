@@ -28,7 +28,7 @@ export function SpacesPlanKonva({
   editable = false,
   onPositionChange,
 }: SpacesPlanKonvaProps) {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [spaces, setSpaces] = useState<SpaceWithBusy[]>([]);
   const [detailsById, setDetailsById] = useState<Record<string, SpaceDetail>>(
     {},
@@ -49,16 +49,14 @@ export function SpacesPlanKonva({
   }, []);
 
   useEffect(() => {
-    if (!token || spaces.length === 0) return;
+    if (!user || spaces.length === 0) return;
     const today = new Date();
     const { start, end } = getDayRange(today);
     const params = new URLSearchParams({
       start: toIsoString(start),
       end: toIsoString(end),
     });
-    api<ReservationCalendarItem[]>(`/reservations?${params.toString()}`, {
-      token,
-    })
+    api<ReservationCalendarItem[]>(`/reservations?${params.toString()}`)
       .then((items) => {
         const busyBySpace = new Set(items.map((r) => r.spaceId));
         setSpaces((prev) =>
@@ -71,7 +69,7 @@ export function SpacesPlanKonva({
       .catch(() => {
         // garder les états par défaut
       });
-  }, [token, spaces.length]);
+  }, [user, spaces.length]);
 
   const width = 800;
   const height = 400;

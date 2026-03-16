@@ -5,6 +5,7 @@ export const AUTH_PREFIX = 'auth';
 
 export const AUTH_ROUTES = {
   LOGIN: 'login',
+  LOGOUT: 'logout',
   ME: 'me',
   REGISTER: 'register',
   VERIFY_EMAIL: 'verify-email',

@@ -20,21 +20,21 @@ function formatDateTime(iso: string) {
 
 export function ReservationDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { token, user } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [detail, setDetail] = useState<ReservationDetail | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!id || !token) return
-    api<ReservationDetail>(`/reservations/${id}`, { token })
+    if (!id) return
+    api<ReservationDetail>(`/reservations/${id}`)
       .then(setDetail)
       .catch(() => {
         toast.error('Réservation non trouvée ou accès refusé.')
         setDetail(null)
       })
       .finally(() => setLoading(false))
-  }, [id, token])
+  }, [id])
 
   if (loading) {
     return (

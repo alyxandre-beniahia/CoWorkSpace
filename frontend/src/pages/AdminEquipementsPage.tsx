@@ -26,7 +26,7 @@ type AdminEquipement = {
 const defaultForm = { name: '', quantity: 1 }
 
 export function AdminEquipementsPage() {
-  const { token } = useAuth()
+  const { user } = useAuth()
   const [equipements, setEquipements] = useState<AdminEquipement[]>([])
   const [loading, setLoading] = useState(false)
   const [editingEquipement, setEditingEquipement] = useState<AdminEquipement | null>(null)
@@ -35,10 +35,10 @@ export function AdminEquipementsPage() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   async function load() {
-    if (!token) return
+    if (!user) return
     setLoading(true)
     try {
-      const data = await api<AdminEquipement[]>('/admin/equipements', { token })
+      const data = await api<AdminEquipement[]>('/admin/equipements')
       setEquipements(data)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Impossible de charger les équipements')
@@ -49,7 +49,7 @@ export function AdminEquipementsPage() {
 
   useEffect(() => {
     load()
-  }, [token])
+  }, [user])
 
   function openEditModal(equipement: AdminEquipement) {
     setEditingEquipement(equipement)
@@ -63,7 +63,7 @@ export function AdminEquipementsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!token) return
+    if (!user) return
     const quantity = Math.max(1, Math.floor(Number(form.quantity) || 1))
     const payload = { name: form.name.trim(), quantity }
     if (!payload.name) {
@@ -75,7 +75,6 @@ export function AdminEquipementsPage() {
         await api(`/admin/equipements/${editingEquipement.id}`, {
           method: 'PATCH',
           body: JSON.stringify(payload),
-          token,
         })
         toast.success('Équipement mis à jour')
         closeEditModal()
@@ -83,7 +82,6 @@ export function AdminEquipementsPage() {
         await api('/admin/equipements', {
           method: 'POST',
           body: JSON.stringify(payload),
-          token,
         })
         toast.success('Équipement créé')
         setForm(defaultForm)
@@ -95,15 +93,15 @@ export function AdminEquipementsPage() {
   }
 
   function openConfirmDelete(id: string) {
-    if (!token) return
+    if (!user) return
     setPendingDeleteId(id)
     setConfirmDeleteOpen(true)
   }
 
   async function performDeleteEquipement() {
-    if (!token || !pendingDeleteId) return
+    if (!user || !pendingDeleteId) return
     try {
-      await api(`/admin/equipements/${pendingDeleteId}`, { method: 'DELETE', token })
+      await api(`/admin/equipements/${pendingDeleteId}`, { method: 'DELETE' })
       toast.success('Équipement supprimé')
       if (editingEquipement?.id === pendingDeleteId) closeEditModal()
       setConfirmDeleteOpen(false)
@@ -114,7 +112,7 @@ export function AdminEquipementsPage() {
     }
   }
 
-  if (!token) return null
+  if (!user) return null
 
   return (
     <div className="space-y-6">

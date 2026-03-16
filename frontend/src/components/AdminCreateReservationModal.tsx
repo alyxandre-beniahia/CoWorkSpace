@@ -63,7 +63,7 @@ export function AdminCreateReservationModal({
   slot,
   onCreated,
 }: AdminCreateReservationModalProps) {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const [spaces, setSpaces] = useState<SpaceListItem[]>([]);
   const [members, setMembers] = useState<MemberItem[]>([]);
   const [seats, setSeats] = useState<SeatItem[]>([]);
@@ -83,14 +83,14 @@ export function AdminCreateReservationModal({
   const isOpenSpace = selectedSpace?.type === "OPEN_SPACE";
 
   useEffect(() => {
-    if (!open || !token) return;
+    if (!open || !user) return;
     api<SpaceListItem[]>("/spaces")
       .then((list) => setSpaces(list.filter((s) => s.type !== "OTHER")))
       .catch(() => setSpaces([]));
-    api<MemberItem[]>("/admin/membres?filter=members", { token })
+    api<MemberItem[]>("/admin/membres?filter=members")
       .then((list) => setMembers(Array.isArray(list) ? list : []))
       .catch(() => setMembers([]));
-  }, [open, token]);
+  }, [open, user]);
 
   useEffect(() => {
     if (!open) {
@@ -113,10 +113,10 @@ export function AdminCreateReservationModal({
       setSeatId(null);
       return;
     }
-    api<SeatItem[]>(`/spaces/${spaceId}/seats`, { token })
+    api<SeatItem[]>(`/spaces/${spaceId}/seats`)
       .then(setSeats)
       .catch(() => setSeats([]));
-  }, [open, spaceId, selectedSpace?.type, token]);
+  }, [open, spaceId, selectedSpace?.type]);
 
   useEffect(() => {
     if (user?.id && open && members.length && !userId) {
@@ -125,7 +125,7 @@ export function AdminCreateReservationModal({
   }, [open, user?.id, members.length, userId]);
 
   async function handleSubmit() {
-    if (!slot || !token) return;
+    if (!slot || !user) return;
     if (!spaceId) {
       toast.error("Veuillez choisir un espace.");
       return;
@@ -171,7 +171,6 @@ export function AdminCreateReservationModal({
       }
       const result = await api<{ created?: number }>("/reservations", {
         method: "POST",
-        token,
         body: JSON.stringify(body),
       });
       if (result && typeof result === "object" && "created" in result && typeof result.created === "number") {

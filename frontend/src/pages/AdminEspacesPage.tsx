@@ -55,7 +55,7 @@ const defaultForm: Omit<AdminSpace, 'id' | 'equipements'> & { status?: SpaceStat
 }
 
 export function AdminEspacesPage() {
-  const { token } = useAuth()
+  const { user } = useAuth()
   const [spaces, setSpaces] = useState<AdminSpace[]>([])
   const [equipements, setEquipements] = useState<AdminEquipementListItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -84,12 +84,12 @@ export function AdminEspacesPage() {
   >([])
 
   async function load() {
-    if (!token) return
+    if (!user) return
     setLoading(true)
     try {
       const [spacesData, equipementsData] = await Promise.all([
-        api<AdminSpace[]>('/admin/espaces', { token }),
-        api<AdminEquipementListItem[]>('/admin/equipements', { token }),
+        api<AdminSpace[]>('/admin/espaces'),
+        api<AdminEquipementListItem[]>('/admin/equipements'),
       ])
       setSpaces(spacesData)
       setEquipements(equipementsData)
@@ -102,7 +102,7 @@ export function AdminEspacesPage() {
 
   useEffect(() => {
     load()
-  }, [token])
+  }, [user])
 
   function openEditModal(space: AdminSpace) {
     setEditingSpace(space)
@@ -158,7 +158,7 @@ export function AdminEspacesPage() {
 
   async function handleCreateSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!token) return
+    if (!user) return
     const payload = {
       name: createForm.name.trim(),
       code: createForm.code?.trim() || null,
@@ -173,13 +173,11 @@ export function AdminEspacesPage() {
       const created = await api<AdminSpace>('/admin/espaces', {
         method: 'POST',
         body: JSON.stringify(payload),
-        token,
       })
       for (const p of pendingEquipements) {
         await api(`/admin/espaces/${created.id}/equipements`, {
           method: 'POST',
           body: JSON.stringify({ equipementId: p.equipementId, quantity: p.quantity }),
-          token,
         })
       }
       toast.success('Espace créé')
@@ -195,7 +193,7 @@ export function AdminEspacesPage() {
 
   async function handleEditSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!token || !editingSpace) return
+    if (!user || !editingSpace) return
     const payload = {
       name: editForm.name.trim(),
       code: editForm.code?.trim() || null,
@@ -210,7 +208,6 @@ export function AdminEspacesPage() {
       await api(`/admin/espaces/${editingSpace.id}`, {
         method: 'PATCH',
         body: JSON.stringify(payload),
-        token,
       })
       toast.success('Espace mis à jour')
       closeEditModal()
@@ -221,15 +218,15 @@ export function AdminEspacesPage() {
   }
 
   function openConfirmDeleteSpace(id: string) {
-    if (!token) return
+    if (!user) return
     setPendingDeleteSpaceId(id)
     setConfirmDeleteSpaceOpen(true)
   }
 
   async function performDeleteSpace() {
-    if (!token || !pendingDeleteSpaceId) return
+    if (!user || !pendingDeleteSpaceId) return
     try {
-      await api(`/admin/espaces/${pendingDeleteSpaceId}`, { method: 'DELETE', token })
+      await api(`/admin/espaces/${pendingDeleteSpaceId}`, { method: 'DELETE' })
       toast.success('Espace supprimé')
       if (editingSpace?.id === pendingDeleteSpaceId) closeEditModal()
       setConfirmDeleteSpaceOpen(false)
@@ -241,12 +238,11 @@ export function AdminEspacesPage() {
   }
 
   async function handlePositionChange(spaceId: string, x: number, y: number) {
-    if (!token) return
+    if (!user) return
     try {
       await api(`/admin/espaces/${spaceId}`, {
         method: 'PATCH',
         body: JSON.stringify({ positionX: x, positionY: y }),
-        token,
       })
       toast.success('Position enregistrée')
       await load()
@@ -259,12 +255,11 @@ export function AdminEspacesPage() {
   const [attachQuantity, setAttachQuantity] = useState(1)
 
   async function handleAttachEquipement(equipementId: string, quantity: number) {
-    if (!token || !editingSpace) return
+    if (!user || !editingSpace) return
     try {
       await api(`/admin/espaces/${editingSpace.id}/equipements`, {
         method: 'POST',
         body: JSON.stringify({ equipementId, quantity }),
-        token,
       })
       toast.success('Équipement associé')
       setAttachEquipementId('')
@@ -276,7 +271,7 @@ export function AdminEspacesPage() {
   }
 
   async function handleDetachEquipement(equipementId: string, quantity?: number) {
-    if (!token || !editingSpace) return
+    if (!user || !editingSpace) return
     try {
       const url =
         quantity != null
@@ -319,7 +314,7 @@ export function AdminEspacesPage() {
     : 1
 
   async function loadHistory(spaceId: string, from: string, to: string) {
-    if (!token) return
+    if (!user) return
     if (!from || !to) {
       toast.error('Merci de sélectionner une période')
       return
@@ -338,7 +333,7 @@ export function AdminEspacesPage() {
           isPrivate: boolean
           isOwner: boolean
         }[]
-      >(`/admin/spaces/${spaceId}/reservations?${params.toString()}`, { token })
+      >(`/admin/spaces/${spaceId}/reservations?${params.toString()}`)
       setHistoryItems(data)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Impossible de charger les réservations')
@@ -348,16 +343,14 @@ export function AdminEspacesPage() {
   }
 
   async function exportHistory(spaceId: string, from: string, to: string) {
-    if (!token) return
+    if (!user) return
     if (!from || !to) {
       toast.error('Merci de sélectionner une période')
       return
     }
     try {
       const params = new URLSearchParams({ from, to })
-      const blob = await apiBlob(`/admin/spaces/${spaceId}/reservations/export?${params.toString()}`, {
-        token,
-      })
+      const blob = await apiBlob(`/admin/spaces/${spaceId}/reservations/export?${params.toString()}`)
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url

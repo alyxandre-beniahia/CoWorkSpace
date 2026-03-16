@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
 import { api, apiBlob } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -23,7 +22,6 @@ function toDateInputValue(d: Date): string {
 }
 
 export function MesReservationsPage() {
-  const { token } = useAuth()
   const [from, setFrom] = useState<string>(() => {
     const d = new Date()
     d.setMonth(d.getMonth() - 3)
@@ -34,15 +32,12 @@ export function MesReservationsPage() {
   const [loading, setLoading] = useState(false)
 
   async function load() {
-    if (!token) return
     setLoading(true)
     try {
       const params = new URLSearchParams()
       if (from) params.set('from', from)
       if (to) params.set('to', to)
-      const data = await api<ReservationHistoryItem[]>(`/reservations/history?${params.toString()}`, {
-        token,
-      })
+      const data = await api<ReservationHistoryItem[]>(`/reservations/history?${params.toString()}`)
       setItems(data)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Impossible de charger les réservations')
@@ -54,15 +49,14 @@ export function MesReservationsPage() {
   useEffect(() => {
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token])
+  }, [])
 
   async function handleExport() {
-    if (!token) return
     try {
       const params = new URLSearchParams()
       if (from) params.set('from', from)
       if (to) params.set('to', to)
-      const blob = await apiBlob(`/reservations/history/export?${params.toString()}`, { token })
+      const blob = await apiBlob(`/reservations/history/export?${params.toString()}`)
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url

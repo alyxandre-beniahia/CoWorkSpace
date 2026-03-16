@@ -22,19 +22,19 @@ type DashboardStats = {
 }
 
 export function AdminPage() {
-  const { token } = useAuth()
+  const { user } = useAuth()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!token) return
-    api<DashboardStats>('/admin/dashboard', { token })
+    if (!user) return
+    api<DashboardStats>('/admin/dashboard')
       .then(setStats)
       .catch((e) => {
         toast.error(e instanceof Error ? e.message : 'Impossible de charger les statistiques')
       })
       .finally(() => setLoading(false))
-  }, [token])
+  }, [user])
 
   return (
     <div className="space-y-6">

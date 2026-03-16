@@ -37,14 +37,14 @@ function formatReservationSlot(start: string | null, end: string | null): string
 }
 
 export function AdminActivityFeed() {
-  const { token } = useAuth()
+  const { user } = useAuth()
   const [items, setItems] = useState<ActivityItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!token) return
+    if (!user) return
     const fetchActivity = () => {
-      api<ActivityItem[]>('/admin/dashboard/activity', { token })
+      api<ActivityItem[]>('/admin/dashboard/activity')
         .then(setItems)
         .catch(() => setItems([]))
         .finally(() => setLoading(false))
@@ -52,7 +52,7 @@ export function AdminActivityFeed() {
     fetchActivity()
     const interval = setInterval(fetchActivity, 30000)
     return () => clearInterval(interval)
-  }, [token])
+  }, [user])
 
   return (
     <Card>
