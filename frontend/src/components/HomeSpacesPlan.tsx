@@ -41,9 +41,36 @@ export function HomeSpacesPlan({ onSelectSpace }: HomeSpacesPlanProps) {
     return () => clearInterval(interval)
   }, [])
 
-  function getPublicStatus(spaceId: string, type: string): PublicPlanStatus {
-    if (type === 'OTHER') return 'other'
-    const forSpace = reservationsToday.filter((r) => r.spaceId === spaceId)
+  function getPublicStatus(space: SpaceListItem): PublicPlanStatus {
+    if (space.type === 'OTHER') return 'other'
+
+    const forSpace = reservationsToday.filter((r) => r.spaceId === space.id)
+
+    // Logique spécifique pour les openspaces : couleur basée sur le taux d’occupation
+    if (space.type === 'OPEN_SPACE') {
+      const nowMs = now
+      const overlappingNow = forSpace.filter((r) => {
+        const start = new Date(r.startDatetime).getTime()
+        const end = new Date(r.endDatetime).getTime()
+        return start <= nowMs && nowMs < end
+      })
+      const occupiedSeatIds = new Set(
+        overlappingNow
+          .map((r) => r.seatId)
+          .filter((id): id is string => Boolean(id))
+      )
+      const occupiedCount = occupiedSeatIds.size
+      const capacity = space.capacity ?? 0
+      if (capacity <= 0) return 'available'
+
+      const ratio = occupiedCount / capacity
+
+      if (ratio >= 0.8) return 'occupied' // quasi complet
+      if (ratio > 0.3) return 'reserved' // partiellement occupé
+      return 'available' // peu occupé
+    }
+
+    // Autres types : logique binaire simple
     const occupiedNow = forSpace.some((r) => {
       const start = new Date(r.startDatetime).getTime()
       const end = new Date(r.endDatetime).getTime()
@@ -78,10 +105,6 @@ export function HomeSpacesPlan({ onSelectSpace }: HomeSpacesPlanProps) {
         const capacity = s.capacity ?? 0
         const remaining = Math.max(0, capacity - occupiedCount)
         availableSeatsNow = remaining
-      } else if (s.type === 'MEETING_ROOM' || s.type === 'HOT_DESK') {
-        // Si une réservation chevauche le créneau actuel, la salle est indisponible
-        const hasOverlap = overlappingNow.length > 0
-        availableSeatsNow = hasOverlap ? 0 : s.capacity ?? 0
       }
 
       return {
@@ -93,7 +116,7 @@ export function HomeSpacesPlan({ onSelectSpace }: HomeSpacesPlanProps) {
         status: s.status,
         positionX: s.positionX,
         positionY: s.positionY,
-        publicStatus: getPublicStatus(s.id, s.type),
+        publicStatus: getPublicStatus(s),
         availableSeatsNow,
       }
     })

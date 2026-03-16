@@ -687,7 +687,12 @@ export function SpaceReservationsModal({
                       id="seat-select"
                       className="min-h-[44px] md:min-h-0 w-full max-w-[200px]"
                     >
-                      <SelectValue placeholder="Choisir un poste" />
+                      <SelectValue placeholder="Choisir un poste">
+                        {selectedSeatId
+                          ? seats.find((s) => s.id === selectedSeatId)?.code ??
+                            selectedSeatId
+                          : null}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {seats.map((seat) => (
@@ -903,11 +908,11 @@ export function SpaceReservationsModal({
                           : "font-medium text-destructive"
                       }
                     >
-                      Disponibilité : {selectedSlotAvailability.available}/
-                      {selectedSlotAvailability.capacity} place
-                      {selectedSlotAvailability.capacity > 1 ? "s" : ""} libre
-                      {selectedSlotAvailability.capacity > 1 ? "s" : ""} sur ce
-                      créneau.
+                      Salle{" "}
+                      {selectedSlotAvailability.available > 0
+                        ? "disponible"
+                        : "déjà réservée"}{" "}
+                      sur ce créneau.
                     </span>
                   )}
                 </div>

@@ -325,10 +325,8 @@ function DraggableSpace({
           fillOpacity={0.8}
           textAnchor="middle"
         >
-          {typeof space.availableSeatsNow === 'number'
-            ? space.type === 'OPEN_SPACE'
-              ? `${space.availableSeatsNow}/${space.capacity} postes libres maintenant`
-              : `${space.availableSeatsNow}/${space.capacity} place${space.capacity > 1 ? 's' : ''} libre${space.capacity > 1 ? 's' : ''} maintenant`
+          {space.type === 'OPEN_SPACE' && typeof space.availableSeatsNow === 'number'
+            ? `${space.availableSeatsNow}/${space.capacity} postes libres maintenant`
             : space.publicStatus != null
               ? { other: 'Autre', available: 'Disponible', reserved: 'Réservé', occupied: 'Occupé' }[space.publicStatus]
               : SPACE_STATUS_LABELS[space.status]}
