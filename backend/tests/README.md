@@ -14,12 +14,12 @@
 
 | Type de test | Cible du test | Description | Outil utilisé |
 | --- | --- | --- | --- |
-| Tests unitaires | Use cases, services de domaine, helpers | Vérifier la logique métier isolée (règles de réservation, conflits, droits, transformations de données). | PHPUnit / Jest (côté Node/Nest) |
-| Tests d’intégration | Contrôleurs HTTP, repository Prisma, configuration de la BDD | Vérifier l’intégration entre l’API NestJS, Prisma et la base de données (requêtes, transactions, erreurs). | PHPUnit / Jest + base de test Postgres |
-| Tests fonctionnels (end-to-end API) | Flux métier complets (création, modification, annulation de réservation, gestion des espaces) | Vérifier qu’un scénario complet fonctionne de bout en bout via l’API HTTP (statuts, payloads, enchaînement). | Jest functional / supertest |
-| Tests end-to-end UI | Parcours utilisateur (réservation via l’interface, tableau de bord admin) | Vérifier l’expérience utilisateur globale via le navigateur (navigation, formulaires, messages d’erreur). | Cypress |
+| Tests unitaires | Use cases, services de domaine, helpers | Vérifier la logique métier isolée (règles de réservation, conflits, droits, transformations de données). | Jest (suite de tests NestJS) |
+| Tests d’intégration | Contrôleurs HTTP, repository Prisma, configuration de la BDD | Vérifier l’intégration entre l’API NestJS, Prisma et la base de données (requêtes, transactions, erreurs). | Jest (configs `jest-integration.config.js`) + base Postgres de test |
+| Tests fonctionnels (end-to-end API) | Flux métier complets (création, modification, annulation de réservation, gestion des espaces) | Vérifier qu’un scénario complet fonctionne de bout en bout via l’API HTTP (statuts, payloads, enchaînement). | Jest fonctionnel / supertest (configs `jest-functional.config.js`) |
+| Tests end-to-end UI | Parcours utilisateur (réservation via l’interface, tableau de bord admin) | Vérifier l’expérience utilisateur globale via le navigateur (navigation, formulaires, messages d’erreur). | Cypress (frontend React) |
 | Tests de performance | Endpoints critiques (création/listing de réservations, listing des espaces) | Mesurer le temps de réponse sous charge modérée et vérifier la tenue des SLA internes. | k6 / artillery / outils de profiling Node |
-| Tests de sécurité | Authentification, autorisations, validation d’entrée | Vérifier qu’aucune action critique n’est accessible sans droits, que les entrées sont validées et protégées (injections, brute-force). | PHPUnit/Jest + outils d’analyse (lint, scanners) |
+| Tests de sécurité | Authentification, autorisations, validation d’entrée | Vérifier qu’aucune action critique n’est accessible sans droits, que les entrées sont validées et protégées (injections, brute-force). | Jest + outils d’analyse (lint, scanners) |
 
 ## Plan de test
 
@@ -35,7 +35,7 @@
 
 | Critères de complétion | Détail |
 | --- | --- |
-| Taux de réussite | Au moins 95% des tests basiques passés avec succès. 100% des tests critiques passés avec succès. Tests réalisés avec PHPUnit et Cypress. |
+| Taux de réussite | Au moins 95% des tests basiques passés avec succès. 100% des tests critiques passés avec succès. Tests réalisés avec Jest (backend) et Cypress (frontend). |
 | Performances | Temps de chargement des pages < 3s. |
 | Date | 19/09/2025 |
 | Responsable des tests | LADMIA Ryan |
