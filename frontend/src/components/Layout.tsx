@@ -21,9 +21,14 @@ export function Layout() {
         <Button variant="ghost" size="sm">Espaces</Button>
       </Link>
       {user && (
-        <Link to="/profil" onClick={() => setSheetOpen(false)}>
-          <Button variant="ghost" size="sm">Profil</Button>
-        </Link>
+        <>
+          <Link to="/mes-reservations" onClick={() => setSheetOpen(false)}>
+            <Button variant="ghost" size="sm">Mes réservations</Button>
+          </Link>
+          <Link to="/profil" onClick={() => setSheetOpen(false)}>
+            <Button variant="ghost" size="sm">Profil</Button>
+          </Link>
+        </>
       )}
       {user?.role.slug === 'admin' && (
         <Link to="/admin" onClick={() => setSheetOpen(false)}>

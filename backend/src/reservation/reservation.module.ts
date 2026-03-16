@@ -15,6 +15,9 @@ import { CancelReservationUseCase } from './application/use-cases/cancel-reserva
 import { ListReservationsUseCase } from './application/use-cases/list-reservations.use-case';
 import { GetReservationByIdUseCase } from './application/use-cases/get-reservation-by-id.use-case';
 import { ListReservationsForCalendarUseCase } from './application/use-cases/list-reservations-for-calendar.use-case';
+import { ReservationPdfService } from './infrastructure/pdf/pdf.service';
+import { ExportMyReservationsPdfUseCase } from './application/use-cases/export-my-reservations-pdf.use-case';
+import { ExportSpaceReservationsPdfUseCase } from './application/use-cases/export-space-reservations-pdf.use-case';
 import { RESERVATION_REPOSITORY } from './domain/repositories/reservation.repository.interface';
 import { RESERVATION_ID_GENERATOR } from './application/ports/id-generator.port';
 import { RESERVATION_RECURRENCE_EXPANDER } from './application/ports/recurrence-expander.port';
@@ -97,7 +100,10 @@ import type { IRecurrenceExpander } from './application/ports/recurrence-expande
       provide: RESERVATIONS_FOR_REMINDER,
       useClass: ReservationsForReminderAdapter,
     },
+    ReservationPdfService,
+    ExportMyReservationsPdfUseCase,
+    ExportSpaceReservationsPdfUseCase,
   ],
-  exports: [RESERVATIONS_FOR_REMINDER],
+  exports: [RESERVATIONS_FOR_REMINDER, ListReservationsUseCase, ExportSpaceReservationsPdfUseCase],
 })
 export class ReservationModule {}

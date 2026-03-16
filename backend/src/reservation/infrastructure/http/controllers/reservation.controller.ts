@@ -1,15 +1,17 @@
 import {
+  Body,
   Controller,
   Get,
-  Post,
-  Patch,
   Param,
-  Body,
+  Patch,
+  Post,
   Query,
-  UseGuards,
   Request,
+  Res,
+  UseGuards,
+  StreamableFile,
 } from '@nestjs/common';
-import type { Request as ExpressRequest } from 'express';
+import type { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import { JwtAuthGuard } from '../../../../shared/guards/jwt-auth.guard';
 import { CreateReservationUseCase } from '../../../application/use-cases/create-reservation.use-case';
 import { UpdateReservationUseCase } from '../../../application/use-cases/update-reservation.use-case';
@@ -17,6 +19,8 @@ import { CancelReservationUseCase } from '../../../application/use-cases/cancel-
 import { ListReservationsUseCase } from '../../../application/use-cases/list-reservations.use-case';
 import { GetReservationByIdUseCase } from '../../../application/use-cases/get-reservation-by-id.use-case';
 import { ListReservationsForCalendarUseCase } from '../../../application/use-cases/list-reservations-for-calendar.use-case';
+import { ExportMyReservationsPdfUseCase } from '../../../application/use-cases/export-my-reservations-pdf.use-case';
+import { ExportSpaceReservationsPdfUseCase } from '../../../application/use-cases/export-space-reservations-pdf.use-case';
 import type { CreateReservationDto } from '../../../application/dtos/create-reservation.dto';
 import type { UpdateReservationDto } from '../../../application/dtos/update-reservation.dto';
 import type { ReservationListFilters } from '../../../domain/filters/reservation-list.filters';
@@ -34,6 +38,8 @@ export class ReservationController {
     private readonly listReservationsUseCase: ListReservationsUseCase,
     private readonly getReservationByIdUseCase: GetReservationByIdUseCase,
     private readonly listReservationsForCalendarUseCase: ListReservationsForCalendarUseCase,
+    private readonly exportMyReservationsPdfUseCase: ExportMyReservationsPdfUseCase,
+    private readonly exportSpaceReservationsPdfUseCase: ExportSpaceReservationsPdfUseCase,
   ) {}
 
   @Post()
@@ -107,6 +113,64 @@ export class ReservationController {
     }
     if (isForPlan) filters.unmaskTitlesForCalendar = true;
     return this.listReservationsUseCase.run(filters);
+  }
+
+  @Get('history')
+  @UseGuards(JwtAuthGuard)
+  async history(
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Request() req?: AuthRequest,
+  ) {
+    const filters: ReservationListFilters = {};
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
+
+    if (fromDate) filters.from = fromDate;
+    if (toDate) {
+      // Interpréter "to" comme inclusif sur toute la journée : on ajoute 1 jour
+      const endOfDay = new Date(toDate);
+      endOfDay.setDate(endOfDay.getDate() + 1);
+      filters.to = endOfDay;
+    }
+    if (req?.user) {
+      filters.currentUserId = req.user.userId;
+      filters.role = req.user.role;
+      if (req.user.role !== 'admin') {
+        filters.userId = req.user.userId;
+      }
+    }
+    return this.listReservationsUseCase.run(filters);
+  }
+
+  @Get('history/export')
+  @UseGuards(JwtAuthGuard)
+  async exportMyHistory(
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Request() req?: AuthRequest,
+    @Res({ passthrough: true }) res?: ExpressResponse,
+  ): Promise<StreamableFile> {
+    const fromDate = from ? new Date(from) : undefined;
+    const toRaw = to ? new Date(to) : undefined;
+    let toDate = toRaw;
+    if (toRaw) {
+      const endOfDay = new Date(toRaw);
+      endOfDay.setDate(endOfDay.getDate() + 1);
+      toDate = endOfDay;
+    }
+    const { buffer, filename } = await this.exportMyReservationsPdfUseCase.run({
+      userId: req!.user.userId,
+      from: fromDate,
+      to: toDate,
+    });
+    if (res) {
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      });
+    }
+    return new StreamableFile(buffer);
   }
 
   @Get(RESERVATION_ROUTES.BY_ID)

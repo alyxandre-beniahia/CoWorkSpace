@@ -9,6 +9,8 @@ import { AdminMembresController } from './infrastructure/http/controllers/admin-
 import { AdminEspacesController } from './infrastructure/http/controllers/admin-espaces.controller';
 import { AdminEquipementsController } from './infrastructure/http/controllers/admin-equipements.controller';
 import { AdminDashboardController } from './infrastructure/http/controllers/admin-dashboard.controller';
+import { AdminReservationsController } from './infrastructure/http/controllers/admin-reservations.controller';
+import { ReservationModule } from '../reservation/reservation.module';
 import { AdminSpaceRepository } from './infrastructure/repositories/admin-space.repository';
 import { AdminEquipementRepository } from './infrastructure/repositories/admin-equipement.repository';
 import { AdminMemberRepository } from './infrastructure/repositories/admin-member.repository';
@@ -43,12 +45,13 @@ import { GetDashboardStatsUseCase } from './application/use-cases/get-dashboard-
 import { GetActivityUseCase } from './application/use-cases/get-activity.use-case';
 
 @Module({
-  imports: [AuthModule, NotificationModule, PrismaModule],
+  imports: [AuthModule, NotificationModule, PrismaModule, ReservationModule],
   controllers: [
     AdminMembresController,
     AdminEspacesController,
     AdminEquipementsController,
     AdminDashboardController,
+    AdminReservationsController,
   ],
   providers: [
     { provide: ADMIN_SPACE_REPOSITORY, useClass: AdminSpaceRepository },

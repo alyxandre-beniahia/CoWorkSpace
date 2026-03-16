@@ -18,6 +18,7 @@ import { AdminEquipementsPage } from '@/pages/AdminEquipementsPage'
 import { AdminLayout } from '@/components/AdminLayout'
 import { SpaceDetailPage } from '@/pages/SpaceDetailPage'
 import { ReservationDetailPage } from '@/pages/ReservationDetailPage'
+import { MesReservationsPage } from '@/pages/MesReservationsPage'
 
 function App() {
   return (
@@ -42,6 +43,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="mes-reservations"
+              element={
+                <ProtectedRoute>
+                  <MesReservationsPage />
                 </ProtectedRoute>
               }
             />

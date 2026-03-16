@@ -15,6 +15,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useAuth } from '@/contexts/AuthContext'
 import { api } from '@/lib/api'
 import { AdminSpacesPlan } from '@/components/AdminSpacesPlan'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { SpaceType, SpaceStatus } from '@/types/space'
 import { SPACE_TYPE_LABELS, SPACE_STATUS_LABELS } from '@/types/space'
 import { toast } from 'sonner'
@@ -66,6 +67,21 @@ export function AdminEspacesPage() {
   const [createAttachQuantity, setCreateAttachQuantity] = useState(1)
   const [confirmDeleteSpaceOpen, setConfirmDeleteSpaceOpen] = useState(false)
   const [pendingDeleteSpaceId, setPendingDeleteSpaceId] = useState<string | null>(null)
+  const [historyFrom, setHistoryFrom] = useState<string>('')
+  const [historyTo, setHistoryTo] = useState<string>('')
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyItems, setHistoryItems] = useState<
+    {
+      id: string
+      spaceName: string
+      seatCode: string | null
+      startDatetime: string
+      endDatetime: string
+      title: string | null
+      isPrivate: boolean
+      isOwner: boolean
+    }[]
+  >([])
 
   async function load() {
     if (!token) return
@@ -301,6 +317,59 @@ export function AdminEspacesPage() {
   const maxAttachQuantity = selectedEquipement
     ? selectedEquipement.available ?? selectedEquipement.quantity
     : 1
+
+  async function loadHistory(spaceId: string, from: string, to: string) {
+    if (!token) return
+    if (!from || !to) {
+      toast.error('Merci de sélectionner une période')
+      return
+    }
+    setHistoryLoading(true)
+    try {
+      const params = new URLSearchParams({ from, to })
+      const data = await api<
+        {
+          id: string
+          spaceName: string
+          seatCode: string | null
+          startDatetime: string
+          endDatetime: string
+          title: string | null
+          isPrivate: boolean
+          isOwner: boolean
+        }[]
+      >(`/admin/spaces/${spaceId}/reservations?${params.toString()}`, { token })
+      setHistoryItems(data)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Impossible de charger les réservations')
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  async function exportHistory(spaceId: string, from: string, to: string) {
+    if (!token) return
+    if (!from || !to) {
+      toast.error('Merci de sélectionner une période')
+      return
+    }
+    try {
+      const params = new URLSearchParams({ from, to })
+      const blob = await apiBlob(`/admin/spaces/${spaceId}/reservations/export?${params.toString()}`, {
+        token,
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'reservations-salle.pdf'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Impossible d'exporter le PDF")
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -708,8 +777,111 @@ export function AdminEspacesPage() {
               choisir la position. Déplacez les espaces déjà placés pour les repositionner.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-6">
             <AdminSpacesPlan spaces={spaces} onPositionChange={handlePositionChange} />
+
+            {editingSpace && (
+              <div className="space-y-3">
+                <h2 className="text-sm font-semibold">Historique des réservations</h2>
+                <form
+                  className="flex flex-col gap-3 sm:flex-row sm:items-end"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    void loadHistory(editingSpace.id, historyFrom, historyTo)
+                  }}
+                >
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor="history-from">Du</Label>
+                    <Input
+                      id="history-from"
+                      type="date"
+                      value={historyFrom}
+                      onChange={(e) => setHistoryFrom(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor="history-to">Au</Label>
+                    <Input
+                      id="history-to"
+                      type="date"
+                      value={historyTo}
+                      onChange={(e) => setHistoryTo(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="submit"
+                      size="sm"
+                      className="min-h-[44px] md:min-h-0"
+                      disabled={historyLoading}
+                    >
+                      Voir
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="min-h-[44px] md:min-h-0"
+                      onClick={() =>
+                        editingSpace && void exportHistory(editingSpace.id, historyFrom, historyTo)
+                      }
+                      disabled={historyLoading || !historyFrom || !historyTo}
+                    >
+                      Exporter en PDF
+                    </Button>
+                  </div>
+                </form>
+
+                <div className="border rounded-md overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Créneau</TableHead>
+                        <TableHead>Poste</TableHead>
+                        <TableHead>Titre</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {historyItems.map((r) => {
+                        const start = new Date(r.startDatetime)
+                        const end = new Date(r.endDatetime)
+                        const dateStr = start.toLocaleDateString('fr-FR')
+                        const timeStr = `${start.toLocaleTimeString('fr-FR', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })} – ${end.toLocaleTimeString('fr-FR', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}`
+                        const title =
+                          r.isPrivate && !r.isOwner
+                            ? '(privé)'
+                            : r.title ?? (r.isPrivate ? '(privé)' : '')
+                        return (
+                          <TableRow key={r.id}>
+                            <TableCell>{dateStr}</TableCell>
+                            <TableCell>{timeStr}</TableCell>
+                            <TableCell>{r.seatCode ?? ''}</TableCell>
+                            <TableCell>{title}</TableCell>
+                          </TableRow>
+                        )
+                      })}
+                      {!historyItems.length && (
+                        <TableRow>
+                          <TableCell
+                            colSpan={4}
+                            className="text-center text-sm text-muted-foreground"
+                          >
+                            Aucune réservation pour cette période.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
