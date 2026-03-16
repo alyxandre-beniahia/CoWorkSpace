@@ -110,7 +110,7 @@ export function SpaceReservationsModal({
 }: SpaceReservationsModalProps) {
   const { token, user } = useAuth();
   const isMobile = useMediaQuery(768);
-  const calendarHeight = isMobile ? 320 : 450;
+  const calendarHeight: number | string = isMobile ? "77vh" : 450;
   const [events, setEvents] = useState<EventInput[]>([]);
   const [reservations, setReservations] = useState<ReservationCalendarItem[]>(
     [],
@@ -147,6 +147,19 @@ export function SpaceReservationsModal({
   const [editRecurrenceEndAt, setEditRecurrenceEndAt] = useState<Date | null>(null);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
+  const [createReservationModalOpen, setCreateReservationModalOpen] = useState(false);
+  const [manualCreateDate, setManualCreateDate] = useState(() =>
+    new Date().toISOString().slice(0, 10),
+  );
+  const [manualCreateStart, setManualCreateStart] = useState("09:00");
+  const [manualCreateEnd, setManualCreateEnd] = useState("10:00");
+  const [manualCreateTitle, setManualCreateTitle] = useState("");
+  const [manualCreateIsPrivate, setManualCreateIsPrivate] = useState(false);
+  const [manualCreateRecurring, setManualCreateRecurring] = useState(false);
+  const [manualCreateRecurrenceFreq, setManualCreateRecurrenceFreq] =
+    useState<RecurrenceFreq>("daily");
+  const [manualCreateRecurrenceWeekdays, setManualCreateRecurrenceWeekdays] = useState<number[]>([]);
+  const [manualCreateRecurrenceEndAt, setManualCreateRecurrenceEndAt] = useState<Date | null>(null);
 
   const isOpenSpace = space?.type === "OPEN_SPACE";
 
@@ -204,6 +217,7 @@ export function SpaceReservationsModal({
       setDetailModalOpen(false);
       setDetailReservationId(null);
       setDetailReservation(null);
+      setCreateReservationModalOpen(false);
     }
   }, [open]);
 
@@ -349,6 +363,87 @@ export function SpaceReservationsModal({
           : e instanceof Error
             ? e.message
             : "Impossible de créer la réservation",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleCreateReservationManual() {
+    if (!space || !token) {
+      toast.error("Vous devez être connecté pour faire une réservation.");
+      return;
+    }
+    if (isOpenSpace && !selectedSeatId) {
+      toast.error("Veuillez sélectionner un poste pour cet open space.");
+      return;
+    }
+    const start = new Date(`${manualCreateDate}T${manualCreateStart}`);
+    const end = new Date(`${manualCreateDate}T${manualCreateEnd}`);
+    if (end <= start) {
+      toast.error("L'heure de fin doit être après l'heure de début.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const body: CreateReservationBody = {
+        spaceId: space.id,
+        startDatetime: start.toISOString(),
+        endDatetime: end.toISOString(),
+        title: manualCreateTitle.trim() || null,
+        isPrivate: manualCreateIsPrivate,
+      };
+      if (selectedSeatId) body.seatId = selectedSeatId;
+      const wantRecurrence =
+        manualCreateRecurring &&
+        manualCreateRecurrenceEndAt &&
+        manualCreateRecurrenceEndAt >= start;
+      if (wantRecurrence) {
+        const rule = buildRecurrenceRule(
+          manualCreateRecurrenceFreq,
+          manualCreateRecurrenceFreq === "weekly" ? manualCreateRecurrenceWeekdays : [],
+        );
+        if (rule) {
+          body.recurrenceRule = rule;
+          body.recurrenceEndAt = manualCreateRecurrenceEndAt.toISOString();
+          try {
+            const tz = Intl?.DateTimeFormat?.()?.resolvedOptions?.()?.timeZone;
+            if (tz) body.timeZone = tz;
+          } catch {
+            // ignorer
+          }
+        }
+      }
+      const result = await api<{ created?: number }>("/reservations", {
+        method: "POST",
+        token,
+        body: JSON.stringify(body),
+      });
+      if (result && typeof result === "object" && "created" in result && typeof result.created === "number") {
+        toast.success(`Série de ${result.created} créneaux réservée`);
+      } else {
+        toast.success("Créneau réservé");
+      }
+      const { start: s, end: e } = getWeekRangeApiParams(currentWeekStart);
+      const params = new URLSearchParams({
+        spaceId: space.id,
+        start: s,
+        end: e,
+        forPlan: "true",
+      });
+      const items = await api<ReservationCalendarItem[]>(
+        `/reservations?${params.toString()}`,
+        { token },
+      );
+      setReservations(items);
+      setEvents(items.map((item) => reservationToEvent(item, user?.role?.slug)));
+      setCreateReservationModalOpen(false);
+      setManualCreateTitle("");
+      setManualCreateRecurring(false);
+      setManualCreateRecurrenceEndAt(null);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Impossible de créer la réservation",
       );
     } finally {
       setSubmitting(false);
@@ -546,7 +641,7 @@ export function SpaceReservationsModal({
             </Badge>
           </DialogTitle>
         </DialogHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
         <div className="space-y-6">
           <div className="grid gap-6 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.9fr)]">
             <div className="space-y-3 text-sm text-muted-foreground">
@@ -702,6 +797,17 @@ export function SpaceReservationsModal({
                   </div>
                 </TabsContent>
               </Tabs>
+            </div>
+
+            <div className="space-y-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => setCreateReservationModalOpen(true)}
+              >
+                Créer une réservation
+              </Button>
             </div>
           </div>
 
@@ -909,17 +1015,17 @@ export function SpaceReservationsModal({
                   </span>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
-                  className="min-w-[160px]"
+                  className="min-w-0 shrink sm:min-w-[160px]"
                   disabled={!selectedReservation || submitting}
                   onClick={() => openConfirmCancel()}
                 >
                   Annuler la réservation
                 </Button>
                 <Button
-                  className="min-w-[160px]"
+                  className="min-w-0 shrink sm:min-w-[160px]"
                   disabled={!selectedReservation || submitting}
                   onClick={handleUpdateReservation}
                 >
@@ -931,6 +1037,205 @@ export function SpaceReservationsModal({
             </div>
           </div>
         </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog
+      open={createReservationModalOpen}
+      onOpenChange={setCreateReservationModalOpen}
+    >
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Créer une réservation</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label htmlFor="manual-date" className="text-foreground">
+              Date
+            </Label>
+            <input
+              id="manual-date"
+              type="date"
+              value={manualCreateDate}
+              onChange={(e) => setManualCreateDate(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="manual-start" className="text-foreground">
+                Heure de début
+              </Label>
+              <input
+                id="manual-start"
+                type="time"
+                value={manualCreateStart}
+                onChange={(e) => setManualCreateStart(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="manual-end" className="text-foreground">
+                Heure de fin
+              </Label>
+              <input
+                id="manual-end"
+                type="time"
+                value={manualCreateEnd}
+                onChange={(e) => setManualCreateEnd(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="manual-title" className="text-foreground">
+              Titre (optionnel)
+            </Label>
+            <Input
+              id="manual-title"
+              type="text"
+              placeholder="Ex. Réunion équipe, focus…"
+              value={manualCreateTitle}
+              onChange={(e) => setManualCreateTitle(e.target.value)}
+              maxLength={200}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="manual-private"
+              checked={manualCreateIsPrivate}
+              onChange={(e) => setManualCreateIsPrivate(e.target.checked)}
+              className="size-4 rounded border-input"
+              aria-label="Réservation privée"
+            />
+            <Label
+              htmlFor="manual-private"
+              className="cursor-pointer font-normal text-muted-foreground"
+            >
+              Réservation privée
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="manual-recurrence"
+              checked={manualCreateRecurring}
+              onChange={(e) => setManualCreateRecurring(e.target.checked)}
+              className="size-4 rounded border-input"
+              aria-label="Répéter"
+            />
+            <Label
+              htmlFor="manual-recurrence"
+              className="cursor-pointer font-normal text-muted-foreground"
+            >
+              Répéter
+            </Label>
+          </div>
+          {manualCreateRecurring && (
+            <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3">
+              <div className="grid gap-2">
+                <Label htmlFor="manual-recurrence-freq" className="text-foreground">
+                  Fréquence
+                </Label>
+                <Select
+                  value={manualCreateRecurrenceFreq}
+                  onValueChange={(v) =>
+                    setManualCreateRecurrenceFreq(v as RecurrenceFreq)
+                  }
+                >
+                  <SelectTrigger
+                    id="manual-recurrence-freq"
+                    className="min-h-[44px] md:min-h-0 w-full max-w-[200px]"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Quotidien</SelectItem>
+                    <SelectItem value="weekly">Hebdomadaire</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {manualCreateRecurrenceFreq === "weekly" && (
+                <div className="grid gap-2">
+                  <Label className="text-foreground">Jour(s)</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { i: 0, label: "Dim" },
+                      { i: 1, label: "Lun" },
+                      { i: 2, label: "Mar" },
+                      { i: 3, label: "Mer" },
+                      { i: 4, label: "Jeu" },
+                      { i: 5, label: "Ven" },
+                      { i: 6, label: "Sam" },
+                    ].map(({ i, label }) => (
+                      <label
+                        key={i}
+                        className="flex cursor-pointer items-center gap-1.5 text-sm text-muted-foreground"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={manualCreateRecurrenceWeekdays.includes(i)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setManualCreateRecurrenceWeekdays((prev) =>
+                                [...prev, i].sort((a, b) => a - b),
+                              );
+                            } else {
+                              setManualCreateRecurrenceWeekdays((prev) =>
+                                prev.filter((d) => d !== i),
+                              );
+                            }
+                          }}
+                          className="size-4 rounded border-input"
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="grid gap-2">
+                <Label htmlFor="manual-recurrence-end" className="text-foreground">
+                  Répéter jusqu&apos;au
+                </Label>
+                <input
+                  id="manual-recurrence-end"
+                  type="date"
+                  min={manualCreateDate}
+                  value={
+                    manualCreateRecurrenceEndAt
+                      ? manualCreateRecurrenceEndAt.toISOString().slice(0, 10)
+                      : ""
+                  }
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setManualCreateRecurrenceEndAt(
+                      v ? new Date(v + "T23:59:59") : null,
+                    );
+                  }}
+                  className="flex h-9 max-w-[200px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                />
+              </div>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2 pt-2">
+            <Button
+              type="button"
+              disabled={submitting}
+              onClick={handleCreateReservationManual}
+            >
+              {submitting ? "Réservation…" : "Réserver"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCreateReservationModalOpen(false)}
+            >
+              Annuler
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
