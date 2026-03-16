@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { NotificationType as PrismaNotificationType } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 import type {
   INotificationLogRepository,
@@ -7,7 +6,8 @@ import type {
   NotificationLogType,
 } from '../../domain/repositories/notification-log.repository.interface';
 
-const TYPE_MAP: Record<NotificationLogType, PrismaNotificationType> = {
+// On garde un mapping centralisé, typé sur le domaine uniquement.
+const TYPE_MAP: Record<NotificationLogType, string> = {
   SIGNUP_CONFIRMATION: 'SIGNUP_CONFIRMATION',
   REGISTRATION_APPROVED: 'REGISTRATION_APPROVED',
   REGISTRATION_REJECTED: 'REGISTRATION_REJECTED',
@@ -24,7 +24,8 @@ export class NotificationLogRepository implements INotificationLogRepository {
   async create(data: CreateNotificationLogInput): Promise<void> {
     await this.prisma.notificationLog.create({
       data: {
-        type: TYPE_MAP[data.type],
+        // Cast léger : les valeurs sont alignées sur l'enum Prisma côté BDD.
+        type: TYPE_MAP[data.type] as any,
         userId: data.userId,
         reservationId: data.reservationId ?? undefined,
       },
