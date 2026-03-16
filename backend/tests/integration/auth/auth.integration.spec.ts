@@ -68,6 +68,12 @@ describe('Auth (intégration)', () => {
 
   describe('GET /auth/me', () => {
     it('retourne le profil si token valide', async () => {
+      const admin = await prisma!.user.findUnique({
+        where: { email: 'admin@test.com' },
+        select: { id: true, email: true, firstname: true, lastname: true },
+      });
+      if (!admin) throw new Error('admin@test.com introuvable. Exécutez le seed.');
+
       const token = await getAuthToken(req, 'admin@test.com', 'password123');
 
       const res = await req
@@ -76,11 +82,11 @@ describe('Auth (intégration)', () => {
         .expect(200);
 
       expect(res.body).toMatchObject({
-        email: 'admin@test.com',
-        firstname: 'Admin',
-        lastname: 'Test',
+        email: admin.email,
+        firstname: admin.firstname,
+        lastname: admin.lastname,
       });
-      expect(res.body).toHaveProperty('id');
+      expect(res.body).toHaveProperty('id', admin.id);
       expect(res.body).toHaveProperty('role');
       expect(res.body.role).toHaveProperty('slug', 'admin');
     });

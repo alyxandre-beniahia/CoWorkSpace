@@ -1,10 +1,18 @@
 import type { IAdminMemberRepository } from '../../domain/repositories/admin-member.repository.interface';
+import type { INotificationSender } from '../../../notification/application/ports/notification-sender.port';
 
-/** Valide une inscription en attente. Notification exclue pour l'instant. */
 export class ValidateRegistrationUseCase {
-  constructor(private readonly memberRepository: IAdminMemberRepository) {}
+  constructor(
+    private readonly memberRepository: IAdminMemberRepository,
+    private readonly notificationSender: INotificationSender,
+  ) {}
 
   async run(userId: string, adminUserId: string) {
-    return this.memberRepository.validateRegistration(userId, adminUserId);
+    const result = await this.memberRepository.validateRegistration(
+      userId,
+      adminUserId,
+    );
+    await this.notificationSender.sendRegistrationApproved(result.email, userId);
+    return result;
   }
 }

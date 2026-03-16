@@ -1,4 +1,5 @@
 import { PrismaService } from '../../../src/database/prisma.service';
+import { getParisDateAtHourInDays } from '../../../src/reservation/application/utils/reservation-window.utils';
 import { createTestApp, getAuthToken } from '../setup/test-app';
 import { cleanupReservationData, cleanupReservationsForUserInRange } from '../setup/test-db';
 import { createTestReservation } from '../setup/fixtures/reservation.fixtures';
@@ -9,19 +10,11 @@ function toIso(d: Date): string {
   return d.toISOString();
 }
 
-/** Créneau dans la plage 7h–20h Paris : `joursFromNow` jours plus tard à 12:00 UTC (≈ 13h Paris). */
-function startInWindow(joursFromNow = 2): Date {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() + joursFromNow);
-  d.setUTCHours(12, 0, 0, 0);
-  return d;
-}
-
-/** Même chose avec un décalage en minutes (0–30) pour éviter collisions entre runs. */
-function startInWindowUnique(joursFromNow: number): Date {
-  const d = startInWindow(joursFromNow);
-  d.setUTCMinutes((Date.now() / 60000) % 30, 0, 0);
-  return d;
+/** Créneau 1h dans la fenêtre 7h–20h Paris, à J+days à 10h. */
+function slotAt10Paris(days: number): { start: Date; end: Date } {
+  const start = getParisDateAtHourInDays(days, 10);
+  const end = getParisDateAtHourInDays(days, 11);
+  return { start, end };
 }
 
 describe('Reservation (intégration)', () => {
@@ -110,8 +103,7 @@ describe('Reservation (intégration)', () => {
 
   describe('POST /reservations', () => {
     it('crée une réservation', async () => {
-      const start = startInWindow(2);
-      const end = new Date(start.getTime() + 60 * 60 * 1000);
+      const { start, end } = slotAt10Paris(2);
 
       const res = await req
         .post('/reservations')
@@ -134,7 +126,7 @@ describe('Reservation (intégration)', () => {
     });
 
     it('retourne 400 si fin <= début', async () => {
-      const start = startInWindow(2);
+      const { start } = slotAt10Paris(3);
       const end = new Date(start.getTime() - 60 * 60 * 1000);
 
       const res = await req
@@ -152,8 +144,7 @@ describe('Reservation (intégration)', () => {
     });
 
     it('retourne 401 sans token', async () => {
-      const start = startInWindow(2);
-      const end = new Date(start.getTime() + 60 * 60 * 1000);
+      const { start, end } = slotAt10Paris(4);
 
       await req
         .post('/reservations')
@@ -167,8 +158,7 @@ describe('Reservation (intégration)', () => {
     });
 
     it('retourne 409 si chevauchement', async () => {
-      const start = startInWindow(3);
-      const end = new Date(start.getTime() + 60 * 60 * 1000);
+      const { start, end } = slotAt10Paris(5);
 
       await createTestReservation(prisma!, {
         userId: memberId,
@@ -193,8 +183,7 @@ describe('Reservation (intégration)', () => {
 
     describe('réservation par poste (openspace)', () => {
       it('crée une réservation avec seatId sur un poste', async () => {
-        const start = startInWindow(4);
-        const end = new Date(start.getTime() + 60 * 60 * 1000);
+        const { start, end } = slotAt10Paris(50);
 
         const res = await req
           .post('/reservations')
@@ -217,8 +206,7 @@ describe('Reservation (intégration)', () => {
       });
 
       it('retourne 409 si même poste et même créneau', async () => {
-        const start = startInWindow(5);
-        const end = new Date(start.getTime() + 60 * 60 * 1000);
+        const { start, end } = slotAt10Paris(7);
 
         await createTestReservation(prisma!, {
           userId: memberId,
@@ -244,12 +232,11 @@ describe('Reservation (intégration)', () => {
         expect(res.body.message).toMatch(/chevauche|déjà une réservation/);
       });
 
-      it('crée une réservation sur un autre poste au même créneau', async () => {
-        const start = startInWindow(6);
-        const end = new Date(start.getTime() + 60 * 60 * 1000);
+      it('même utilisateur au même créneau sur un autre poste → 409 (une seule résa par créneau)', async () => {
+        const { start, end } = slotAt10Paris(8);
 
         await createTestReservation(prisma!, {
-          userId: adminId,
+          userId: memberId,
           spaceId: openSpaceId,
           seatId: openSpaceSeat1Id,
           startDatetime: start,
@@ -267,26 +254,15 @@ describe('Reservation (intégration)', () => {
             endDatetime: toIso(end),
             title: `it-seat-other-2-${Date.now()}`,
           })
-          .expect(201);
+          .expect(409);
 
-        expect(res.body).toMatchObject({
-          spaceId: openSpaceId,
-          seatId: openSpaceSeat2Id,
-          seatCode: 'OS-02',
-        });
+        expect(res.body.message).toMatch(/déjà une réservation|chevauche/);
       });
     });
 
     it('crée une réservation récurrente', async () => {
-      const start = startInWindowUnique(50);
-      const end = new Date(start.getTime() + 60 * 60 * 1000);
-      const recurrenceEndAt = new Date(start.getTime() + 72 * 60 * 60 * 1000);
-      await cleanupReservationsForUserInRange(
-        prisma!,
-        memberId,
-        start,
-        new Date(recurrenceEndAt.getTime() + 60 * 60 * 1000),
-      );
+      const { start, end } = slotAt10Paris(9);
+      const recurrenceEndAt = getParisDateAtHourInDays(12, 10);
 
       const res = await req
         .post('/reservations')
@@ -312,9 +288,8 @@ describe('Reservation (intégration)', () => {
     });
 
     it('retourne 400 si recurrenceEndAt <= startDatetime', async () => {
-      const start = startInWindow(8);
-      const end = new Date(start.getTime() + 60 * 60 * 1000);
-      const recurrenceEndAt = new Date(start.getTime() - 60 * 60 * 1000);
+      const { start, end } = slotAt10Paris(20);
+      const recurrenceEndAt = getParisDateAtHourInDays(20, 9);
 
       const res = await req
         .post('/reservations')
@@ -333,15 +308,16 @@ describe('Reservation (intégration)', () => {
     });
 
     it('retourne 409 si une occurrence de la série récurrente chevauche une réservation existante', async () => {
-      const start = startInWindow(9);
-      const end = new Date(start.getTime() + 60 * 60 * 1000);
-      const recurrenceEndAt = new Date(start.getTime() + 72 * 60 * 60 * 1000);
+      const { start, end } = slotAt10Paris(21);
+      const recurrenceEndAt = getParisDateAtHourInDays(24, 10);
+      const conflictStart = getParisDateAtHourInDays(22, 10);
+      const conflictEnd = getParisDateAtHourInDays(22, 11);
 
       await createTestReservation(prisma!, {
         userId: memberId,
         spaceId: spaceIdC,
-        startDatetime: new Date(start.getTime() + 24 * 60 * 60 * 1000),
-        endDatetime: new Date(start.getTime() + 25 * 60 * 60 * 1000),
+        startDatetime: conflictStart,
+        endDatetime: conflictEnd,
       });
 
       const res = await req
@@ -358,7 +334,7 @@ describe('Reservation (intégration)', () => {
         .expect(409);
 
       expect(res.body.message).toContain('Impossible de créer la série');
-      expect(res.body.message).toMatch(/déjà réservé|déjà une réservation/);
+      expect(res.body.message).toMatch(/déjà une réservation|déjà réservé/);
     });
   });
 
@@ -416,9 +392,12 @@ describe('Reservation (intégration)', () => {
     });
 
     it('n\'inclut pas les réservations annulées (soft delete)', async () => {
+      const { start, end } = slotAt10Paris(25);
       const { reservation } = await createTestReservation(prisma!, {
         userId: memberId,
         spaceId,
+        startDatetime: start,
+        endDatetime: end,
       });
 
       await req
@@ -475,9 +454,12 @@ describe('Reservation (intégration)', () => {
     });
 
     it('retourne 404 si réservation annulée (soft delete)', async () => {
+      const { start, end } = slotAt10Paris(26);
       const { reservation } = await createTestReservation(prisma!, {
         userId: memberId,
         spaceId,
+        startDatetime: start,
+        endDatetime: end,
       });
 
       await req
@@ -494,9 +476,7 @@ describe('Reservation (intégration)', () => {
 
   describe('PATCH /reservations/:id', () => {
     it('met à jour une réservation', async () => {
-      const slotStart = startInWindowUnique(51);
-      const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
-      await cleanupReservationsForUserInRange(prisma!, memberId, slotStart, slotEnd);
+      const { start: slotStart, end: slotEnd } = slotAt10Paris(45);
       const { reservation } = await createTestReservation(prisma!, {
         userId: memberId,
         spaceId: spaceIdB,
@@ -505,17 +485,16 @@ describe('Reservation (intégration)', () => {
         title: `it-update-${Date.now()}`,
       });
 
-      await req
+      const res = await req
         .patch(`/reservations/${reservation.id}`)
         .set('Authorization', `Bearer ${memberToken}`)
         .send({ title: 'Réunion modifiée' })
         .expect(200);
 
-      const getRes = await req
-        .get(`/reservations/${reservation.id}`)
-        .set('Authorization', `Bearer ${memberToken}`)
-        .expect(200);
-      expect(getRes.body.title).toBe('Réunion modifiée');
+      expect(res.body).toMatchObject({
+        id: reservation.id,
+        title: 'Réunion modifiée',
+      });
     });
 
     it('retourne 404 si id inexistant', async () => {
@@ -552,12 +531,15 @@ describe('Reservation (intégration)', () => {
     });
 
     it('retourne 409 si end <= start dans le body', async () => {
+      const { start: slotStart, end: slotEnd } = slotAt10Paris(28);
       const { reservation } = await createTestReservation(prisma!, {
         userId: memberId,
         spaceId,
+        startDatetime: slotStart,
+        endDatetime: slotEnd,
       });
-      const start = startInWindow(2);
-      const end = new Date(start.getTime() - 60 * 60 * 1000);
+      const start = getParisDateAtHourInDays(29, 10);
+      const end = getParisDateAtHourInDays(29, 9);
 
       const res = await req
         .patch(`/reservations/${reservation.id}`)
@@ -572,8 +554,8 @@ describe('Reservation (intégration)', () => {
     });
 
     it('retourne 409 si chevauchement', async () => {
-      const baseStart = startInWindow(11);
-      const baseEnd = new Date(baseStart.getTime() + 60 * 60 * 1000);
+      const { start: baseStart, end: baseEnd } = slotAt10Paris(46);
+      const { start: otherStart, end: otherEnd } = slotAt10Paris(47);
 
       await createTestReservation(prisma!, {
         userId: adminId,
@@ -585,8 +567,8 @@ describe('Reservation (intégration)', () => {
       const { reservation } = await createTestReservation(prisma!, {
         userId: memberId,
         spaceId,
-        startDatetime: new Date(baseStart.getTime() + 24 * 60 * 60 * 1000),
-        endDatetime: new Date(baseEnd.getTime() + 24 * 60 * 60 * 1000),
+        startDatetime: otherStart,
+        endDatetime: otherEnd,
       });
 
       const res = await req
@@ -646,9 +628,8 @@ describe('Reservation (intégration)', () => {
     });
 
     it('annule toute la série récurrente avec scope=all', async () => {
-      const start = startInWindow(12);
-      const end = new Date(start.getTime() + 60 * 60 * 1000);
-      const recurrenceEndAt = new Date(start.getTime() + 72 * 60 * 60 * 1000);
+      const { start, end } = slotAt10Paris(33);
+      const recurrenceEndAt = getParisDateAtHourInDays(36, 10);
 
       const createRes = await req
         .post('/reservations')

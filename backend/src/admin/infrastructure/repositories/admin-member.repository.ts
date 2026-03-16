@@ -62,7 +62,10 @@ export class AdminMemberRepository implements IAdminMemberRepository {
         isActive: true,
       },
     });
-    return { message: 'Inscription validée. Le membre peut maintenant se connecter.' };
+    return {
+      message: 'Inscription validée. Le membre peut maintenant se connecter.',
+      email: user.email,
+    };
   }
 
   async rejectRegistration(userId: string) {
@@ -76,7 +79,11 @@ export class AdminMemberRepository implements IAdminMemberRepository {
     if (user.approvedAt)
       throw new AdminForbiddenError('Cette inscription est déjà validée');
 
-    return { message: 'Inscription refusée.' };
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { isActive: false },
+    });
+    return { message: 'Inscription refusée.', email: user.email };
   }
 
   async setMemberActive(userId: string, isActive: boolean) {

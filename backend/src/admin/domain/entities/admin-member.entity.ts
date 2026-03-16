@@ -15,6 +15,6 @@ export type MemberListItem = {
 
 export type ListMembersFilter = 'pending' | 'members' | 'all';
 
-export type ValidateRegistrationResult = { message: string };
+export type ValidateRegistrationResult = { message: string; email: string };
 
-export type RejectRegistrationResult = { message: string };
+export type RejectRegistrationResult = { message: string; email: string };

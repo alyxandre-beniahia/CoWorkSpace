@@ -19,6 +19,9 @@ export class ReservationRepository implements IReservationRepository {
     const where: Prisma.ReservationWhereInput = { deletedAt: null };
     if (filters.userId) where.userId = filters.userId;
     if (filters.spaceId) where.spaceId = filters.spaceId;
+    if (filters.title && filters.title.trim()) {
+      where.title = { contains: filters.title.trim(), mode: 'insensitive' };
+    }
     if (filters.from && filters.to) {
       where.AND = [
         { endDatetime: { gt: filters.from } },
@@ -266,6 +269,42 @@ export class ReservationRepository implements IReservationRepository {
       startDatetime: r.startDatetime,
       endDatetime: r.endDatetime,
       isPrivate: r.isPrivate,
+      title: r.title,
+    }));
+  }
+
+  async findReservationsStartingBetween(
+    start: Date,
+    end: Date,
+  ): Promise<
+    Array<{
+      id: string;
+      userId: string;
+      userEmail: string;
+      spaceName: string;
+      startDatetime: Date;
+      endDatetime: Date;
+      title: string | null;
+    }>
+  > {
+    const items = await this.prisma.reservation.findMany({
+      where: {
+        deletedAt: null,
+        startDatetime: { gte: start, lte: end },
+      },
+      include: {
+        space: { select: { name: true } },
+        user: { select: { email: true } },
+      },
+      orderBy: { startDatetime: 'asc' },
+    });
+    return items.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      userEmail: r.user.email,
+      spaceName: r.space.name,
+      startDatetime: r.startDatetime,
+      endDatetime: r.endDatetime,
       title: r.title,
     }));
   }

@@ -138,3 +138,13 @@ export function getWeekStartEndParis(): { start: Date; end: Date } {
   const end = new Date(start.getTime() + 7 * 24 * 3600 * 1000 - 1);
   return { start, end };
 }
+
+/**
+ * Retourne une date à l'heure donnée (Paris) dans N jours. Utile pour les tests (créneaux 7h–20h).
+ */
+export function getParisDateAtHourInDays(daysFromNow: number, hour: number): Date {
+  const now = new Date();
+  const targetDate = new Date(now.getTime() + daysFromNow * 24 * 3600 * 1000);
+  const p = getDatePartsInParis(targetDate);
+  return dateAtParisHour(p.year, p.month, p.day, hour);
+}

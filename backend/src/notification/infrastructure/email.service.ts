@@ -145,4 +145,126 @@ export class EmailService {
       console.error('[Email] Erreur envoi inscription refusée:', err);
     }
   }
+
+  /**
+   * Confirmation de réservation (US-NOT-02).
+   */
+  async sendReservationConfirmationEmail(
+    to: string,
+    payload: { spaceName: string; startDatetime: Date; endDatetime: Date; title?: string | null },
+  ): Promise<void> {
+    const start = this.formatDateTime(payload.startDatetime);
+    const end = this.formatDateTime(payload.endDatetime);
+    const title = payload.title ? ` – ${payload.title}` : '';
+    const subject = "CoWork'Space – Réservation confirmée";
+    const html = `
+      <p>Bonjour,</p>
+      <p>Votre réservation a bien été enregistrée.</p>
+      <p><strong>Espace :</strong> ${this.escapeHtml(payload.spaceName)}${this.escapeHtml(title)}</p>
+      <p><strong>Début :</strong> ${start}</p>
+      <p><strong>Fin :</strong> ${end}</p>
+      <p>L'équipe CoWork'Space</p>
+    `.trim();
+    await this.send(to, subject, html, '[Email] Réservation confirmée');
+  }
+
+  /**
+   * Rappel 24h avant la réservation (US-NOT-03).
+   */
+  async sendReservationReminder24hEmail(
+    to: string,
+    payload: { spaceName: string; startDatetime: Date; endDatetime: Date; title?: string | null },
+  ): Promise<void> {
+    const start = this.formatDateTime(payload.startDatetime);
+    const end = this.formatDateTime(payload.endDatetime);
+    const title = payload.title ? ` – ${payload.title}` : '';
+    const subject = "CoWork'Space – Rappel : réservation demain";
+    const html = `
+      <p>Bonjour,</p>
+      <p>Ceci est un rappel : vous avez une réservation prévue.</p>
+      <p><strong>Espace :</strong> ${this.escapeHtml(payload.spaceName)}${this.escapeHtml(title)}</p>
+      <p><strong>Début :</strong> ${start}</p>
+      <p><strong>Fin :</strong> ${end}</p>
+      <p>L'équipe CoWork'Space</p>
+    `.trim();
+    await this.send(to, subject, html, '[Email] Rappel réservation 24h');
+  }
+
+  /**
+   * Notification d'annulation (US-NOT-04).
+   */
+  async sendReservationCancelledEmail(
+    to: string,
+    payload: { spaceName: string; startDatetime: Date; endDatetime: Date; title?: string | null },
+  ): Promise<void> {
+    const start = this.formatDateTime(payload.startDatetime);
+    const end = this.formatDateTime(payload.endDatetime);
+    const subject = "CoWork'Space – Réservation annulée";
+    const html = `
+      <p>Bonjour,</p>
+      <p>Votre réservation a été annulée.</p>
+      <p><strong>Espace :</strong> ${this.escapeHtml(payload.spaceName)}</p>
+      <p><strong>Créneau :</strong> ${start} – ${end}</p>
+      <p>L'équipe CoWork'Space</p>
+    `.trim();
+    await this.send(to, subject, html, '[Email] Réservation annulée');
+  }
+
+  /**
+   * Notification de modification (US-NOT-04).
+   */
+  async sendReservationModifiedEmail(
+    to: string,
+    payload: { spaceName: string; startDatetime: Date; endDatetime: Date; title?: string | null },
+  ): Promise<void> {
+    const start = this.formatDateTime(payload.startDatetime);
+    const end = this.formatDateTime(payload.endDatetime);
+    const subject = "CoWork'Space – Réservation modifiée";
+    const html = `
+      <p>Bonjour,</p>
+      <p>Votre réservation a été modifiée.</p>
+      <p><strong>Espace :</strong> ${this.escapeHtml(payload.spaceName)}</p>
+      <p><strong>Nouveau créneau :</strong> ${start} – ${end}</p>
+      <p>L'équipe CoWork'Space</p>
+    `.trim();
+    await this.send(to, subject, html, '[Email] Réservation modifiée');
+  }
+
+  private async send(
+    to: string,
+    subject: string,
+    html: string,
+    logLabel: string,
+  ): Promise<void> {
+    if (!this.resend) {
+      console.log(`${logLabel} envoyé à ${to}`);
+      return;
+    }
+    try {
+      const { error } = await this.resend.emails.send({
+        from: this.from,
+        to: [to],
+        subject,
+        html,
+      });
+      if (error) console.error(`${logLabel} Resend:`, error);
+    } catch (err) {
+      console.error(`${logLabel}:`, err);
+    }
+  }
+
+  private formatDateTime(d: Date): string {
+    return new Date(d).toLocaleString('fr-FR', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    });
+  }
+
+  private escapeHtml(s: string): string {
+    return s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
 }

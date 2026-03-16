@@ -188,10 +188,10 @@
 
 | Règle | Détail |
 |-------|--------|
-| **Nom des branches** | `auth/session`, `espaces/lecture`, `reservations/creer`, `admin/membres`, etc. (pas de préfixe `API/` ou `FRONT/` : une branche = une feature full-stack). |
-| **Création** | Toujours partir de `main` à jour : `git checkout main && git pull && git checkout -b auth/session`. |
+| **Nom des branches** | `auth/session`, `espaces/lecture`, `reservations/creer`, `admin/membres`, etc. (une branche = une feature full-stack). |
+| **Création** | Toujours partir de `main` à jour |
 | **Merge** | En fin de journée (ou quand la feature est prête) : merge vers `main`, résoudre les conflits tout de suite. |
-| **Rebase** | Au moins une fois par jour : depuis ta branche, `git fetch origin main && git rebase origin/main` (ou merge de `main` dans ta branche si vous préférez). |
+| **Rebase** | Au moins une fois par jour merge main dans ta branche|
 | **Pas de merge** | Ne pas merger une branche qui dépend d’une autre non encore mergée (ex. ne pas merger `reservations/creer` si `auth/session` ou `espaces/lecture` n’est pas sur `main`). |
 
 ---
