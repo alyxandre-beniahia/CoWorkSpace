@@ -14,12 +14,9 @@
 
 | Type de test | Cible du test | Description | Outil utilisé |
 | --- | --- | --- | --- |
-| Tests unitaires | Use cases, services de domaine, helpers | Vérifier la logique métier isolée (règles de réservation, conflits, droits, transformations de données). | Jest (suite de tests NestJS) |
-| Tests d’intégration | Contrôleurs HTTP, repository Prisma, configuration de la BDD | Vérifier l’intégration entre l’API NestJS, Prisma et la base de données (requêtes, transactions, erreurs). | Jest (configs `jest-integration.config.js`) + base Postgres de test |
-| Tests fonctionnels (end-to-end API) | Flux métier complets (création, modification, annulation de réservation, gestion des espaces) | Vérifier qu’un scénario complet fonctionne de bout en bout via l’API HTTP (statuts, payloads, enchaînement). | Jest fonctionnel / supertest (configs `jest-functional.config.js`) |
-| Tests end-to-end UI | Parcours utilisateur (réservation via l’interface, tableau de bord admin) | Vérifier l’expérience utilisateur globale via le navigateur (navigation, formulaires, messages d’erreur). | Cypress (frontend React) |
-| Tests de performance | Endpoints critiques (création/listing de réservations, listing des espaces) | Mesurer le temps de réponse sous charge modérée et vérifier la tenue des SLA internes. | k6 / artillery / outils de profiling Node |
-| Tests de sécurité | Authentification, autorisations, validation d’entrée | Vérifier qu’aucune action critique n’est accessible sans droits, que les entrées sont validées et protégées (injections, brute-force). | Jest + outils d’analyse (lint, scanners) |
+| Tests unitaires (specs NestJS) | Use cases, services de domaine, helpers | Vérifier la logique métier isolée (règles de réservation, conflits, droits, transformations de données). | Jest (`npm run test`) |
+| Tests d’intégration | Contrôleurs HTTP, repository Prisma, configuration de la BDD | Vérifier l’intégration entre l’API NestJS, Prisma et la base de données (requêtes, transactions, erreurs). | Jest avec `jest-integration.config.js` (`npm run test:integration`) |
+| Tests fonctionnels (API) | Flux métier complets (création, modification, annulation de réservation, gestion des espaces) | Vérifier qu’un scénario complet fonctionne de bout en bout via l’API HTTP (statuts, payloads, enchaînement). | Jest fonctionnel / supertest avec `jest-functional.config.js` (`npm run test:functional`) |
 
 ## Plan de test
 
@@ -33,21 +30,23 @@
 
 ## Rapport de tests (synthèse)
 
+**Dernière exécution observée** : `npm run test -- --runInBand`
+
 | Critères de complétion | Détail |
 | --- | --- |
-| Taux de réussite | Au moins 95% des tests basiques passés avec succès. 100% des tests critiques passés avec succès. Tests réalisés avec Jest (backend) et Cypress (frontend). |
-| Performances | Temps de chargement des pages < 3s. |
-| Date | 19/09/2025 |
-| Responsable des tests | LADMIA Ryan |
-| Objectifs | Vérifier les fonctionnalités, l’intégration, la performance, la sécurité et l’expérience utilisateur. |
-| Résumé | Cas de tests exécutés : 72. Cas de tests réussis : 72. Cas de tests échoués : 0. Pourcentage de tests réussis : 100%. Pourcentage de tests échoués : 0%. |
-| Analyse des tests | Les tests ont révélé que les fonctionnalités critiques s’exécutaient correctement et offrent une application performante et accessible. Des corrections peuvent être ajoutées pour optimiser davantage la sécurité et l’apparence. |
+| Taux de réussite (actuel) | 28 suites exécutées : 16 réussies, 12 en échec (erreurs de configuration). 45 tests exécutés : 45 réussis, 0 échoué au niveau des assertions. |
+| Causes des échecs | Modules manquants pour certains tests : `pdfkit` (génération de PDF) et `@nestjs/schedule` (tâches planifiées de rappels). Ces suites n’ont pas pu s’exécuter. |
+| Date | Voir la date d’exécution dans le rapport Jest généré localement. |
+| Responsable des tests | LADMIA Ryan. |
+| Objectifs cibles | À terme : au moins 95 % des tests basiques passés avec succès et 100 % des tests critiques passés avec succès, une fois la configuration (dépendances) corrigée. |
+| Résumé | La logique métier couverte par les tests qui s’exécutent passe intégralement (45/45). Il reste à installer/configurer les dépendances `pdfkit` et `@nestjs/schedule` pour faire passer les 12 suites restantes. |
+| Analyse des tests | Le cœur métier (réservations, membres, etc.) testé via Jest se comporte correctement sur les cas couverts. Les échecs actuels sont liés à des dépendances techniques manquantes et non à des régressions fonctionnelles détectées. |
 
 ### Détail des cas de tests (extrait)
 
-| ID | Type de test | Fonctionnalité | Commande | Résultats |
+| ID | Type de test | Fonctionnalité | Commande | Résultats attendus |
 | --- | --- | --- | --- | --- |
-| T-UNIT-ALL | Unitaire | Suite complète des tests unitaires backend | `npm run test:unit` ou `npm run test -- --runInBand` | Tous les tests unitaires passent avec succès, couverture conforme aux objectifs. |
-| T-INT-API | Intégration | API réservations et espaces | `npm run test:integration` | Les endpoints principaux répondent avec les bons statuts et payloads, sans régression critique. |
-| T-FUNC-API | Fonctionnel | Scénarios métier complets (réservation) | `npm run test:functional` | Tous les scénarios de bout en bout sont validés, y compris les cas d’erreur métier. |
-| T-E2E-UI | End-to-end UI | Parcours utilisateur web | `npm run cypress:run` | Les parcours critiques (connexion, création de réservation, consultation) fonctionnent sans erreur. |
+| T-UNIT-ALL | Unitaire | Suite complète des tests unitaires backend | `npm run test -- --runInBand` | Tous les tests unitaires passent avec succès, aucune erreur de compilation/dépendance, couverture conforme aux objectifs. |
+| T-INT-API | Intégration | API réservations et espaces | `npm run test:integration` | Les endpoints principaux répondent avec les bons statuts et payloads, sans régression critique (à exécuter une fois la BDD de test prête). |
+| T-FUNC-API | Fonctionnel | Scénarios métier complets (réservation) | `npm run test:functional` | Tous les scénarios de bout en bout sont validés, y compris les cas d’erreur métier (à exécuter une fois la BDD fonctionnelle prête). |
+
